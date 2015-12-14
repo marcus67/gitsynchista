@@ -1,9 +1,11 @@
 import client
 import os
 import time
+import datetime
 import logging
 import re
 import tempfile
+import StringIO
 
 reload(client)
 reload(logging)
@@ -12,11 +14,13 @@ LOCAL_DIR = '../Rechtschreibung'
 REMOTE_DIR = '/rechtschreibung'
 
 GIT_IGNORE_FILE = '.gitignore'
-BITSYNCHISRA_IGNORE_FILE = 'bitsynchista_ignore'
+GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
+
+ADDITIONAL_IGNORE_PATTERNS = '|\..*'
 
 global logger
 
-logger = logging.getLogger('bitsynchista')  
+logger = logging.getLogger('gitsynchista')  
 logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -26,19 +30,21 @@ logger.addHandler(ch)
 
 class File(object):
   
-  def __init__(self, name, base_name, mtime, sub_files = None):
+  def __init__(self, name, physical_name, base_name, mtime, sub_files = None, is_ignored=False):
     
     self.name = name
+    self.physical_name = physical_name
     self.base_name = base_name
     self.mtime = mtime
     self.sub_files = sub_files
+    self.is_ignored = is_ignored
     
   def is_directory(self):
 
     return self.sub_files != None
     
   def __str__(self):
-    return "%s %s %d %s" % (self.name, self.is_directory(), self.mtime, time.ctime(self.mtime))
+    return "log=%s phys=%s dir=%s ign=%s %s" % (self.name, self.physical_name, self.is_directory(), self.is_ignored, time.ctime(self.mtime))
   
 class IgnoreInfo(object):
   
@@ -46,36 +52,39 @@ class IgnoreInfo(object):
     
     global logger
     
-    pattern_string = ('^' + file_string.replace('*', '.*').replace('\n','$|^') + '$').replace('|^$', '')
+    pattern_string = ('^' + file_string.replace('.','\.').replace('*', '.*').replace('\n','$|^') + '$').replace('|^$', '') + ADDITIONAL_IGNORE_PATTERNS
     logger.info("Created IgnoreInfo with pattern regex '%s'" % pattern_string)
     self.regex = re.compile(pattern_string)        
     
   def is_ignored(self, name):
     
-    return self.regex.match(name)
+    return self.regex.match(name) != None
     
 class FileAccess(object):
   
-  def load_directory(self, base_path, root_path=None):
+  def __init__(self, root_path):
     
+    self.root_path = root_path
+  
+  def load_directory(self, base_path=None, parent_is_ignored=False):
+    
+    if not base_path:
+      base_path = self.root_path
     logger.info("Loading file directory '%s'" % base_path)
-    if not root_path:
-      root_path = base_path
     files = []
     github_ignore_info = self.load_ignore_info(os.path.join(base_path, GIT_IGNORE_FILE))
-    bitsynchista_ignore_info = self.load_ignore_info(os.path.join(base_path, BITSYNCHISRA_IGNORE_FILE))
+    gitsynchista_ignore_info = self.load_ignore_info(os.path.join(base_path, GITSYNCHISTA_IGNORE_FILE))
     for f in os.listdir(base_path):
-      if (github_ignore_info and github_ignore_info.is_ignored(f)) or (bitsynchista_ignore_info and bitsynchista_ignore_info.is_ignored(f)):
-        continue
+      is_ignored = parent_is_ignored or (github_ignore_info != None and github_ignore_info.is_ignored(f)) or (gitsynchista_ignore_info != None and gitsynchista_ignore_info.is_ignored(f))
       path = os.path.join(base_path, f)
       attr = os.stat(path)
       isDirectory = os.path.isdir(path)
       if isDirectory:
-        sub_files = self.load_directory(base_path=path, root_path=root_path)
+        sub_files = self.load_directory(base_path=path, parent_is_ignored=is_ignored)
       else:
         sub_files = None
       
-      file = File(name=path.replace(root_path, '.', 1), base_name=f, mtime=attr.st_mtime, sub_files=sub_files)
+      file = File(name=path.replace(self.root_path, '.', 1), physical_name=path, base_name=f, mtime=attr.st_mtime, sub_files=sub_files, is_ignored=is_ignored)
       files.append(file)
     
     return files
@@ -103,12 +112,16 @@ class FileAccess(object):
   def load_into_string(self, path):
     
     return open(path, "rb").read()
+    
+  def set_mtime(self, path, mtime):
+    os.utime(path, (mtime, mtime))          
+    
   
 class WebDavFileAccess(FileAccess):
   
-  def __init__(self, webdav_client):
+  def __init__(self, webdav_client, root_path=None):
     
-    #super(WebDavFileAccess, self).__init()
+    super(WebDavFileAccess, self).__init__(root_path)
     self.webdav_client = webdav_client
     
   def file_exists(self, path):
@@ -118,49 +131,120 @@ class WebDavFileAccess(FileAccess):
     else:
       return self.webdav_client.exists(path)
     
-  def load_directory(self, base_path, root_path=None):
+  def load_directory(self, base_path=None, parent_is_ignored=False):
   
     global logger
     
+    if not base_path:
+      base_path = self.root_path
     logger.info("Loading WebDav directory '%s'" % base_path)
-    if not root_path:
-      root_path = base_path
     files = []
     ignore_info = self.load_ignore_info(os.path.join(base_path, GIT_IGNORE_FILE))
     for f in self.webdav_client.ls(base_path):
       if base_path == f.name:
         continue 
+      base_name = os.path.basename(f.name)
+      is_ignored = parent_is_ignored or (ignore_info != None and ignore_info.is_ignored(base_name))
       #print f.name
       if f.mtime == '':
-        sub_files = self.load_directory(base_path=f.name, root_path=root_path)
+        sub_files = self.load_directory(base_path=f.name, parent_is_ignored=is_ignored)
         mtime = 0
       else:
         sub_files = None
         struct_time = time.strptime(f.mtime, '%a, %d %b %Y %H:%M:%S %Z')
-        mtime = time.mktime(struct_time)
-      file = File(name=f.name.replace(root_path, '.', 1), base_name=os.path.basename(f.name), mtime=mtime, sub_files=sub_files)
+        mtime = time.mktime(struct_time) + 3600
+      file = File(name=f.name.replace(self.root_path, '.', 1), physical_name=f.name, base_name=base_name, mtime=mtime, sub_files=sub_files, is_ignored=is_ignored)
       files.append(file)
     
     return files
     
   def save_from_string(self, path, string):
     
-    bstring = basestring(string)
-    self.webdav_client.upload(path, bstring)
+    global logger
+    
+    logger.info("Saving string to WebDav:%s" % path)
+    string_file = StringIO.StringIO(string)
+    self.webdav_client.upload(string_file, path)
   
   def load_into_string(self, path):
   
-    bstring = basestring()  
-    webdav_client.download(path, bstring)
-    return str(bstring)
-        
+    global logger
+    
+    string_file = StringIO.StringIO()
+    self.webdav_client.download(path, string_file)
+    logger.info("Loading 'WebDav:%s' into string" % path)
+    return str(string_file.getvalue())
+
+  def set_mtime(self, path, mtime):
+    
+    global logger
+    
+    logger.warning("Cannot set mtime for WebDav files")        
         
 def compare_file_sets(file_dict1, file_dict2, change_info):
   for (file_name1, file1) in file_dict1.items():
+    if not file1.is_ignored:
       if not file_name1 in file_dict2:
         change_info.new_files.append(file1)
-      elif (not file1.is_directory()) and file1.mtime > file_dict2[file_name1].mtime:
-        change_info.modified_files.append(file1)
+      else:
+        file2 = file_dict2[file_name1]
+        if (not (file1.is_directory() or file2.is_ignored)) and file1.mtime > file2.mtime:
+          change_info.modified_files.append(file1)
+  change_info.dest_file_dict = file_dict2
+
+def transfer_modified_files(change_info, source_file_access, dest_file_access):
+  
+  global logger
+  
+  for file in change_info.modified_files:
+    
+    if not(file.is_directory()):
+      dest_file = change_info.dest_file_dict[file.name]
+      logger.info("Transferring '%s' to '%s'" % (file.physical_name, dest_file.physical_name))
+      dest_file_access.save_from_string(dest_file.physical_name, source_file_access.load_into_string(file.physical_name))
+      dest_file_access.set_mtime(dest_file.physical_name, file.mtime)
+  
+def transfer_new_files(change_info, source_file_access, dest_file_access):
+  
+  global logger
+  
+  for file in change_info.new_files:
+    
+    if file.is_ignored:
+      continue
+      
+    if file.is_directory():
+      logger("Creation of directories not supported yet: create '%s' manually" % file.name)
+      continue
+    
+    dest_physical_name = os.path.normpath(os.path.join(dest_file_access.root_path, file.name))
+    
+    logger.info("Transferring '%s' to '%s'" % (file.physical_name, dest_physical_name))
+    dest_file_access.save_from_string(dest_physical_name, source_file_access.load_into_string(file.physical_name))
+    dest_file_access.set_mtime(dest_physical_name, file.mtime)
+
+def update_source_timestamps(change_info, source_file_access, dest_file_access):
+  
+  global logger
+  
+  updated_dest_files = dest_file_access.load_directory()
+  updated_dest_file_dict = make_file_dictionary(updated_dest_files)
+  
+  all_files = []
+  all_files.extend(change_info.modified_files)
+  all_files.extend(change_info.new_files)
+    
+  for file in all_files:
+    
+    if not file.name in updated_dest_file_dict:
+      logger.warning("source file '%s' not found in upated destination file list -> cannot update timestamp" % file.name)
+      continue
+      
+    dest_file = updated_dest_file_dict[file.name]
+    if dest_file.mtime > file.mtime:
+      logger.info("updating mtime of '%s' from %s to %s" % (file.name, time.ctime(file.mtime), time.ctime(dest_file.mtime)))
+      source_file_access.set_mtime(file.physical_name, dest_file.mtime)
+  
 
 class ChangeInfo(object):
   
@@ -168,19 +252,20 @@ class ChangeInfo(object):
     
     self.new_files = []
     self.modified_files = []
+    self.dest_file_dict = None
 
 class CompareInfo(object):
   
-  def __init__(self, local_file_access, remote_file_access, local_root_path, remote_root_path):
+  def __init__(self, local_file_access, remote_file_access):
     
     global logger
     
     self.local_file_access = local_file_access
     self.remote_file_access = remote_file_access
     logger.info("Loading local directory structure")
-    self.local_files = local_file_access.load_directory(local_root_path)
+    self.local_files = local_file_access.load_directory()
     logger.info("Loading remote directory structure")
-    self.remote_files = remote_file_access.load_directory(remote_root_path)
+    self.remote_files = remote_file_access.load_directory()
     self.local_change_info = ChangeInfo()
     self.remote_change_info = ChangeInfo()
     self.compare()
@@ -194,6 +279,27 @@ class CompareInfo(object):
     compare_file_sets(self.local_file_dict, self.remote_file_dict, self.local_change_info)
     compare_file_sets(self.remote_file_dict, self.local_file_dict, self.remote_change_info)
 
+  def transfer_modified_files_to_remote(self):
+    
+    transfer_modified_files(self.local_change_info, self.local_file_access, self.remote_file_access)
+    
+  def transfer_new_files_to_remote(self):
+    
+    transfer_new_files(self.local_change_info, self.local_file_access, self.remote_file_access)
+    
+  def transfer_modified_files_from_remote(self):
+    
+    transfer_modified_files(self.remote_change_info, self.remote_file_access, self.local_file_access)
+    
+  def transfer_new_files_from_remote(self):
+    
+    transfer_new_files(self.remote_change_info, self.remote_file_access, self.local_file_access)
+    
+  def update_local_timestamps(self):
+    
+    update_source_timestamps(self.local_change_info, self.local_file_access, self.remote_file_access)
+
+    
     
 def make_file_dictionary(files, file_dict=None):
   
@@ -215,38 +321,65 @@ def dump_files(files, indent=0):
     logger.info("%s %s" % (" " * indent, str(f)))
     if f.is_directory():
       dump_files(f.sub_files, indent = indent + 4)
-  
-def test():
 
-  global logger
-
-  webdav_client = client.Client('localhost', port=8080,
-                 protocol='http', verify_ssl=False, cert=None)
-  local_file_access = FileAccess()
-  remote_file_access = WebDavFileAccess(webdav_client)    
+class SyncConfig(object):
   
-  compare_info = CompareInfo(local_file_access, remote_file_access, LOCAL_DIR, REMOTE_DIR)
-  
-  logger.info("Local files:")
-  dump_files(compare_info.local_files)
-  logger.info("Remote files:")
-  dump_files(compare_info.remote_files)
-  
-  logger.info("Local new files:")
-  for file in compare_info.local_change_info.new_files:
-    logger.info("    %s" % str(file))
-  logger.info("Local modified files:")
-  for file in compare_info.local_change_info.modified_files:
-    logger.info("    %s" % str(file))
-  logger.info("Remote new files:")
-  for file in compare_info.remote_change_info.new_files:
-    logger.info("    %s" % str(file))
-  logger.info("Remote modified files:")
-  for file in compare_info.remote_change_info.modified_files:
-    logger.info("    %s" % str(file))
+  def __init__(self):
     
+    self.webdav_server = 'localhost'
+    self.webdav_port = 8080
+    self.webdav_username = None
+    self.webdav_password = None
+    self.webdav_epoch_delta = 3600
+    self.local_path = None
+    self.remote_path = None
+    self.transfer_to_remote = True
+    self.transfer_to_local = True
+    
+class SyncTool(object):
   
-if __name__ == '__main__':
-  test()
+  def __init__(self, sync_config):
+    
+    self.sync_config = sync_config
+    
+    
+  def sync(self):
+      
+    global logger
+
+    webdav_client = client.Client(self.sync_config.webdav_server, port=self.sync_config.webdav_port,
+                   protocol='http', verify_ssl=False, cert=None, username=self.sync_config.webdav_username, password=self.sync_config.webdav_password)
+    local_file_access = FileAccess(self.sync_config.local_path)
+    remote_file_access = WebDavFileAccess(webdav_client, self.sync_config.remote_path)    
+  
+    compare_info = CompareInfo(local_file_access, remote_file_access)
+  
+    logger.info("Local files:")
+    dump_files(compare_info.local_files)
+    logger.info("Remote files:")
+    dump_files(compare_info.remote_files)
+  
+    logger.info("Local new files:")
+    for file in compare_info.local_change_info.new_files:
+      logger.info("    %s" % str(file))
+    logger.info("Local modified files:")
+    for file in compare_info.local_change_info.modified_files:
+      logger.info("    %s" % str(file))
+    logger.info("Remote new files:")
+    for file in compare_info.remote_change_info.new_files:
+      logger.info("    %s" % str(file))
+    logger.info("Remote modified files:")
+    for file in compare_info.remote_change_info.modified_files:
+      logger.info("    %s" % str(file))
+  
+    if self.sync_config.transfer_to_remote:
+      compare_info.transfer_modified_files_to_remote()
+      compare_info.transfer_new_files_to_remote()
+      compare_info.update_local_timestamps()
+      
+    if self.sync_config.transfer_to_local:
+      compare_info.transfer_modified_files_from_remote()
+      compare_info.transfer_new_files_from_remote()
+  
 
   
