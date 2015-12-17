@@ -7,11 +7,10 @@ import re
 import tempfile
 import StringIO
 
+import sync_config
+
 reload(client)
 reload(logging)
-
-LOCAL_DIR = '../Rechtschreibung'
-REMOTE_DIR = '/rechtschreibung'
 
 GIT_IGNORE_FILE = '.gitignore'
 GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
@@ -330,35 +329,22 @@ def dump_files(files, indent=0):
     if f.is_directory():
       dump_files(f.sub_files, indent = indent + 4)
 
-class SyncConfig(object):
-  
-  def __init__(self):
-    
-    self.webdav_server = 'localhost'
-    self.webdav_port = 8080
-    self.webdav_username = None
-    self.webdav_password = None
-    self.webdav_epoch_delta = 3600
-    self.local_path = None
-    self.remote_path = None
-    self.transfer_to_remote = True
-    self.transfer_to_local = True
     
 class SyncTool(object):
   
-  def __init__(self, sync_config):
+  def __init__(self, tool_sync_config):
     
-    self.sync_config = sync_config
+    self.tool_sync_config = tool_sync_config
     
     
   def sync(self):
       
     global logger
 
-    webdav_client = client.Client(self.sync_config.webdav_server, port=self.sync_config.webdav_port,
-                   protocol='http', verify_ssl=False, cert=None, username=self.sync_config.webdav_username, password=self.sync_config.webdav_password)
-    local_file_access = FileAccess(self.sync_config.local_path)
-    remote_file_access = WebDavFileAccess(webdav_client, self.sync_config.remote_path)    
+    webdav_client = client.Client(self.tool_sync_config.webdav.server, port=self.tool_sync_config.webdav.port,
+                   protocol='http', verify_ssl=False, cert=None, username=self.tool_sync_config.webdav.username, password=self.tool_sync_config.webdav.password)
+    local_file_access = FileAccess(self.tool_sync_config.repository.local_path)
+    remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)    
   
     compare_info = CompareInfo(local_file_access, remote_file_access)
   
@@ -380,12 +366,12 @@ class SyncTool(object):
     for file in compare_info.remote_change_info.modified_files:
       logger.info("    %s" % str(file))
   
-    if self.sync_config.transfer_to_remote:
+    if self.tool_sync_config.repository.transfer_to_remote:
       compare_info.transfer_modified_files_to_remote()
       compare_info.transfer_new_files_to_remote()
       compare_info.update_local_timestamps()
       
-    if self.sync_config.transfer_to_local:
+    if self.tool_sync_config.repository.transfer_to_local:
       compare_info.transfer_modified_files_from_remote()
       compare_info.transfer_new_files_from_remote()
   
