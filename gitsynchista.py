@@ -116,6 +116,9 @@ class FileAccess(object):
   def set_mtime(self, path, mtime):
     os.utime(path, (mtime, mtime))          
     
+  def mkdir(self, path):
+    os.mkdir(path)
+    
   
 class WebDavFileAccess(FileAccess):
   
@@ -180,6 +183,9 @@ class WebDavFileAccess(FileAccess):
     global logger
     
     logger.warning("Cannot set mtime for WebDav files")        
+    
+  def mkdir(self, path):
+    self.webdav_client.mkdir(path)
         
 def compare_file_sets(file_dict1, file_dict2, change_info):
   for (file_name1, file1) in file_dict1.items():
@@ -212,16 +218,18 @@ def transfer_new_files(change_info, source_file_access, dest_file_access):
     
     if file.is_ignored:
       continue
-      
-    if file.is_directory():
-      logger("Creation of directories not supported yet: create '%s' manually" % file.name)
-      continue
-    
+        
     dest_physical_name = os.path.normpath(os.path.join(dest_file_access.root_path, file.name))
-    
-    logger.info("Transferring '%s' to '%s'" % (file.physical_name, dest_physical_name))
-    dest_file_access.save_from_string(dest_physical_name, source_file_access.load_into_string(file.physical_name))
-    dest_file_access.set_mtime(dest_physical_name, file.mtime)
+  
+    if file.is_directory():
+      #logger.warning("Creation of directories not supported yet: create '%s' manually" % file.name)
+      #continue
+      logger.info("Creating directory '%s'" % dest_physical_name)
+      dest_file_access.mkdir(dest_physical_name)
+    else:
+      logger.info("Transferring '%s' to '%s'" % (file.physical_name, dest_physical_name))
+      dest_file_access.save_from_string(dest_physical_name, source_file_access.load_into_string(file.physical_name))
+      dest_file_access.set_mtime(dest_physical_name, file.mtime)
 
 def update_source_timestamps(change_info, source_file_access, dest_file_access):
   

@@ -1,0 +1,16 @@
+[webdav]
+
+port=8080
+server=localhost
+epoch_delta = 3600
+username = test_user
+password = test_password
+
+[repository]
+
+name = test
+local_path = test
+remote_path = test
+transfer_to_remote = True
+transfer_to_local = True
+
