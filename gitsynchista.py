@@ -1,3 +1,4 @@
+import sys
 import client
 import os
 import time
@@ -7,13 +8,17 @@ import re
 import tempfile
 import StringIO
 
+import config
 import sync_config
 
 reload(client)
 reload(logging)
+reload(config)
+reload(sync_config)
 
 GIT_IGNORE_FILE = '.gitignore'
 GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
+GITSYNCHISTA_CONFIG_FILE = 'gitsynchista_config'
 
 ADDITIONAL_IGNORE_PATTERNS = '|\..*'
 
@@ -335,10 +340,10 @@ class SyncTool(object):
   def __init__(self, tool_sync_config):
     
     self.tool_sync_config = tool_sync_config
+    self.compare_info = None
     
+  def scan(self):
     
-  def sync(self):
-      
     global logger
 
     webdav_client = client.Client(self.tool_sync_config.webdav.server, port=self.tool_sync_config.webdav.port,
@@ -346,34 +351,96 @@ class SyncTool(object):
     local_file_access = FileAccess(self.tool_sync_config.repository.local_path)
     remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)    
   
-    compare_info = CompareInfo(local_file_access, remote_file_access)
+    self.compare_info = CompareInfo(local_file_access, remote_file_access)
   
     logger.info("Local files:")
-    dump_files(compare_info.local_files)
+    dump_files(self.compare_info.local_files)
     logger.info("Remote files:")
-    dump_files(compare_info.remote_files)
+    dump_files(self.compare_info.remote_files)
   
     logger.info("Local new files:")
-    for file in compare_info.local_change_info.new_files:
+    for file in self.compare_info.local_change_info.new_files:
       logger.info("    %s" % str(file))
     logger.info("Local modified files:")
-    for file in compare_info.local_change_info.modified_files:
+    for file in self.compare_info.local_change_info.modified_files:
       logger.info("    %s" % str(file))
     logger.info("Remote new files:")
-    for file in compare_info.remote_change_info.new_files:
+    for file in self.compare_info.remote_change_info.new_files:
       logger.info("    %s" % str(file))
     logger.info("Remote modified files:")
-    for file in compare_info.remote_change_info.modified_files:
+    for file in self.compare_info.remote_change_info.modified_files:
       logger.info("    %s" % str(file))
-  
+
+
+  def sync(self):
+    
+    if self.compare_info == None:
+      self.scan()
+      
     if self.tool_sync_config.repository.transfer_to_remote:
-      compare_info.transfer_modified_files_to_remote()
-      compare_info.transfer_new_files_to_remote()
-      compare_info.update_local_timestamps()
+      self.compare_info.transfer_modified_files_to_remote()
+      self.compare_info.transfer_new_files_to_remote()
+      self.compare_info.update_local_timestamps()
       
     if self.tool_sync_config.repository.transfer_to_local:
-      compare_info.transfer_modified_files_from_remote()
-      compare_info.transfer_new_files_from_remote()
+      self.compare_info.transfer_modified_files_from_remote()
+      self.compare_info.transfer_new_files_from_remote()
   
 
+def find_sync_configs(base_path='/'):
+  
+  config_filenames = []
+  configs = {}
+  
+  for (dirpath, dirnames, filenames) in os.walk(top, topdown=True, onerror=None, followlinks=False):
+    
+    for file in filenames:
+      
+      if file.starts_with(GITSYNCHISTA_CONFIG_FILE):
+        config_filenames.append( os.path.join(dirpath, filename) )
+        
+  for filename in config_filenames:
+    config = config.ConfigHandler(sync_config.SyncConfig())
+    config.read_config_file(filename)
+    
+    configs[config.repository.name] = config
+    
+  return configs
+  
+  
+def load_config_file_and_sync(config_filename):
+  
+  global logger
+  
+  config_handler = config.ConfigHandler(sync_config.SyncConfig())
+  tool_sync_config = config_handler.read_config_file(config_filename)
+  
+  sync_tool = SyncTool(tool_sync_config)
+  
+  try:
+    
+    sync_tool.scan()
+    
+  except Exception as e:
+    
+    logger.error("Exception %s during scan" % str(e))
+    return
+  
+  try:
+    
+    sync_tool.sync()
+    
+  except Exception as e:
+    
+    logger.error("Exception %s during sync" % str(e))
+  
+  
+  
+def main():
+  
+  if len(sys.argv) == 2:  
+    load_config_file_and_sync(sys.argv[1])
+  
+if __name__ == '__main__':
+  main()
   
