@@ -274,10 +274,10 @@ class CompareInfo(object):
     
     self.local_file_access = local_file_access
     self.remote_file_access = remote_file_access
-    logger.info("Loading local directory structure")
-    self.local_files = local_file_access.load_directory()
     logger.info("Loading remote directory structure")
     self.remote_files = remote_file_access.load_directory()
+    logger.info("Loading local directory structure")
+    self.local_files = local_file_access.load_directory()
     self.local_change_info = ChangeInfo()
     self.remote_change_info = ChangeInfo()
     self.compare()
@@ -387,23 +387,22 @@ class SyncTool(object):
       self.compare_info.transfer_new_files_from_remote()
   
 
-def find_sync_configs(base_path='/'):
+def find_sync_configs(base_path='..'):
   
   config_filenames = []
-  configs = {}
+  configs = []
   
-  for (dirpath, dirnames, filenames) in os.walk(top, topdown=True, onerror=None, followlinks=False):
+  for (dirpath, dirnames, filenames) in os.walk(base_path, topdown=True, onerror=None, followlinks=False):
     
-    for file in filenames:
+    for filename in filenames:
       
-      if file.starts_with(GITSYNCHISTA_CONFIG_FILE):
+      if filename == GITSYNCHISTA_CONFIG_FILE:
         config_filenames.append( os.path.join(dirpath, filename) )
         
   for filename in config_filenames:
-    config = config.ConfigHandler(sync_config.SyncConfig())
-    config.read_config_file(filename)
-    
-    configs[config.repository.name] = config
+    config_handler = config.ConfigHandler(sync_config.SyncConfig())
+    a_sync_config = config_handler.read_config_file(filename)    
+    configs.append(a_sync_config)
     
   return configs
   
@@ -434,12 +433,36 @@ def load_config_file_and_sync(config_filename):
     
     logger.error("Exception %s during sync" % str(e))
   
+
+def start_gui():
   
+  global logger
+  
+  sync_tools = []
+  logger.info("Starting GUI...")
+  configs = find_sync_configs()
+  for config in configs:
+    
+    logger.info("Found configuration '%s'..." % config.repository.name)
+    
+    try:
+      
+      sync_tool = SyncTool(config)
+      sync_tool.scan()
+      sync_tools.append(sync_tool)
+      
+    except Exception as e:
+      
+      logger.info("Error '%s' while processing configuration '%s'" % ( str(e), config.repository.name) )
+    
+      
   
 def main():
   
   if len(sys.argv) == 2:  
     load_config_file_and_sync(sys.argv[1])
+  else:
+    start_gui()
   
 if __name__ == '__main__':
   main()
