@@ -49,6 +49,9 @@ class File(object):
     
   def __str__(self):
     return "log=%s phys=%s dir=%s ign=%s %s" % (self.name, self.physical_name, self.is_directory(), self.is_ignored, time.ctime(self.mtime))
+    
+def compare_files_by_name(file1, file2):
+  return cmp(file1.name, file2.name)
   
 class IgnoreInfo(object):
   
@@ -218,7 +221,7 @@ def transfer_new_files(change_info, source_file_access, dest_file_access):
   
   global logger
   
-  for file in change_info.new_files:
+  for file in sorted(change_info.new_files, cmp=compare_files_by_name):
     
     if file.is_ignored:
       continue
@@ -378,13 +381,13 @@ class SyncTool(object):
       self.scan()
       
     if self.tool_sync_config.repository.transfer_to_remote:
-      self.compare_info.transfer_modified_files_to_remote()
       self.compare_info.transfer_new_files_to_remote()
+      self.compare_info.transfer_modified_files_to_remote()
       self.compare_info.update_local_timestamps()
       
     if self.tool_sync_config.repository.transfer_to_local:
-      self.compare_info.transfer_modified_files_from_remote()
       self.compare_info.transfer_new_files_from_remote()
+      self.compare_info.transfer_modified_files_from_remote()
   
 
 def find_sync_configs(base_path='..'):
