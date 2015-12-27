@@ -6,4 +6,6 @@ The tool compares a local directory tree of Pythonista with a remote directory t
 
 ## Installation
 
-The easiest 
+The source code is available as a self-extracting Python script. See file `build/gitsynchista_zip.py`. Download this file and follow the instructions contained therein.
+
+Have fun!
