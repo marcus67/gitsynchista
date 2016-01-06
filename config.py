@@ -1,13 +1,14 @@
 import copy
 import string
-import logging
-
 import ConfigParser
 
+import log
+
+reload(log)
 
 global logger
 
-logger = logging.getLogger('gitsynchista')  
+logger = log.open_logging()
 
 class BaseConfig(object):
 
