@@ -31,24 +31,57 @@ class SyncSelector(ui_util.ViewController):
     
     return sender == self
     
-  def select(self, sync_tools):
+  def select(self, sync_tools, style = 'sheet'):
 
     global logger
 
     self.sync_tools = sync_tools        
 
+    self.tableview_sync_selector = self.find_subview_by_name('tableview_sync_selector')
+    self.button_scan = self.find_subview_by_name('button_scan')
+    self.button_sync = self.find_subview_by_name('button_sync')
+
+    self.selected_index = None
+    self.list_data_source = ui.ListDataSource([])
+
+    self.update_tool_states()
+    self.update_view_states()
+    
+    self.present(style)
+    
+    if not self.parent_view:
+      self.view.wait_modal()
+    
+    
+  def update_tool_states(self):
+    
+    global logger
+    
+    logger.info("update_tool_states: selected_index=%s" % str(self.selected_index))
     items = []
 
     for tool in self.sync_tools:
      
       logger.debug("add tool '%s' to list" % tool.get_name())
-      entryMap = { 'title' : tool.get_name() }
+      line = "%s: %s" % (tool.get_name(), tool.get_sync_summary())
+      
+      logger.info("line=%s" % line)
+
+      entryMap = { 'title' : line }
+      
+      if tool.has_error():
+        entryMap['image'] = 'ionicons-ios7-bolt-outline-32'        
+      elif tool.is_scanned():
+        if tool.is_sync_required():
+          entryMap['image'] = 'ionicons-ios7-refresh-outline-32'
+        else:
+          entryMap['image'] = 'ionicons-ios7-checkmark-outline-32'
+      else:
+        entryMap['image'] = 'ionicons-ios7-search-32'
+        
 
 
 #      if mode.isImmutable: 
-#        entryMap['image'] = 'ionicons-ios7-locked-32'
-#      else:
-#        entryMap['image'] = 'ionicons-ios7-unlocked-outline-32'
 #        
 #      if len(mode.comment) > 0:
 #        entryMap['accessory_type'] = 'detail_button'
@@ -56,20 +89,37 @@ class SyncSelector(ui_util.ViewController):
         
       items.append(entryMap)
         
-    self.list_data_source = ui.ListDataSource(items)
     #self.list_data_source.highlight_color = defaults.COLOR_LIGHT_GREEN
-    self.selected_index = None
-    self.tableview_sync_selector = self.find_subview_by_name('tableview_sync_selector')
-    self.tableview_sync_selector.data_source = self.list_data_source
+    self.tableview_sync_selector.data_source.items = items
     
-    self.button_sync = self.find_subview_by_name('button_sync')
+    if self.selected_index != None:
+      self.tableview_sync_selector.data_source.selected_row = self.selected_index
+    
+    
+  def update_view_states(self):
+    
+    global logger
+    
+    logger.info("update_view_states: selected_index=%s" % str(self.selected_index))
+    
+    if self.selected_index != None:
+      
+      sync_tool = self.sync_tools[self.selected_index]
+      if sync_tool.is_scanned():
+        scan_active = False
+        sync_active = sync_tool.is_sync_required()
+      else:
+        scan_active = True
+        sync_active = False
+              
+    else:
+      
+      scan_active = False
+      sync_active = False
+    
+    self.button_scan.enabled = scan_active
+    self.button_sync.enabled = sync_active
 
-    self.present()
-    
-    if not self.parent_view:
-      self.view.wait_modal()
-    
-    
   def handle_action(self, sender):
     
     global logger
@@ -78,17 +128,38 @@ class SyncSelector(ui_util.ViewController):
     if type(sender).__name__ == 'ListDataSource':
       self.selected_index = sender.selected_row
       logger.debug("handle_action from ListDataSource: selected_index=%d" % self.selected_index)
-      close = True
+      self.update_view_states()
         
-    elif sender.name == 'button_cancel':
-      logger.debug("handle_action from cancel button")
-      close =True
+    elif sender.name == 'button_sync':
+      logger.debug("handle_action from sync button")
+      self.execute_sync()
+      self.update_tool_states()
+      self.update_view_states()
+      
+    elif sender.name == 'button_scan':
+      logger.debug("handle_action from scan button")
+      self.execute_scan()
+      self.update_tool_states()
+      self.update_view_states()
       
     if close:
       self.view.close()
       if self.parent_view:
         self.parent_view.handle_action(self)
         
+  def execute_scan(self):
+    
+    if self.selected_index != None:
+      sync_tool = self.sync_tools[self.selected_index]
+      sync_tool.scan()
+      
+  def execute_sync(self):
+    
+    if self.selected_index != None:
+      sync_tool = self.sync_tools[self.selected_index]
+      sync_tool.sync()
+      sync_tool.scan()
+      
   def handle_accessory(self, sender):
     
     global logger

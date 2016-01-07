@@ -14,7 +14,6 @@ import sync_config
 
 reload(log)
 reload(client)
-reload(logging)
 reload(config)
 reload(sync_config)
 
@@ -311,7 +310,27 @@ class CompareInfo(object):
     
     update_source_timestamps(self.local_change_info, self.local_file_access, self.remote_file_access)
 
+  def get_nr_of_files_to_be_created(self):
     
+    return len(self.local_change_info.new_files) + len(self.remote_change_info.new_files)
+    
+  def get_nr_of_files_to_be_updated(self):
+    
+    return len(self.local_change_info.modified_files) + len(self.remote_change_info.modified_files)
+
+  def is_sync_required(self):
+    
+    return (self.get_nr_of_files_to_be_created() + self.get_nr_of_files_to_be_updated()) > 0
+      
+  def get_sync_summary(self):
+    
+    if self.is_sync_required():
+      
+      return "files to be created %d, updates: %d" % (self.get_nr_of_files_to_be_created(), self.get_nr_of_files_to_be_updated()) 
+    
+    else:
+    
+      return "all files in sync"
     
 def make_file_dictionary(files, file_dict=None):
   
@@ -341,6 +360,7 @@ class SyncTool(object):
     
     self.tool_sync_config = tool_sync_config
     self.compare_info = None
+    self.error = None
     
   def get_name(self):
     
@@ -349,46 +369,96 @@ class SyncTool(object):
   def scan(self):
     
     global logger
+    
+    self.error = None
+    try:
 
-    webdav_client = client.Client(self.tool_sync_config.webdav.server, port=self.tool_sync_config.webdav.port,
-                   protocol='http', verify_ssl=False, cert=None, username=self.tool_sync_config.webdav.username, password=self.tool_sync_config.webdav.password)
-    local_file_access = FileAccess(self.tool_sync_config.repository.local_path)
-    remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)    
+      webdav_client = client.Client(self.tool_sync_config.webdav.server, port=self.tool_sync_config.webdav.port,
+                     protocol='http', verify_ssl=False, cert=None, username=self.tool_sync_config.webdav.username, password=self.tool_sync_config.webdav.password)
+      local_file_access = FileAccess(self.tool_sync_config.repository.local_path)
+      remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)    
   
-    self.compare_info = CompareInfo(local_file_access, remote_file_access)
+      self.compare_info = CompareInfo(local_file_access, remote_file_access)
   
-    logger.info("Local files:")
-    dump_files(self.compare_info.local_files)
-    logger.info("Remote files:")
-    dump_files(self.compare_info.remote_files)
+      logger.info("Local files:")
+      dump_files(self.compare_info.local_files)
+      logger.info("Remote files:")
+      dump_files(self.compare_info.remote_files)
   
-    logger.info("Local new files:")
-    for file in self.compare_info.local_change_info.new_files:
-      logger.info("    %s" % str(file))
-    logger.info("Local modified files:")
-    for file in self.compare_info.local_change_info.modified_files:
-      logger.info("    %s" % str(file))
-    logger.info("Remote new files:")
-    for file in self.compare_info.remote_change_info.new_files:
-      logger.info("    %s" % str(file))
-    logger.info("Remote modified files:")
-    for file in self.compare_info.remote_change_info.modified_files:
-      logger.info("    %s" % str(file))
+      logger.info("Local new files:")
+      for file in self.compare_info.local_change_info.new_files:
+        logger.info("    %s" % str(file))
+      logger.info("Local modified files:")
+      for file in self.compare_info.local_change_info.modified_files:
+        logger.info("    %s" % str(file))
+      logger.info("Remote new files:")
+      for file in self.compare_info.remote_change_info.new_files:
+        logger.info("    %s" % str(file))
+      logger.info("Remote modified files:")
+      for file in self.compare_info.remote_change_info.modified_files:
+        logger.info("    %s" % str(file))
 
+    except Exception as e:
+      
+      error_text = str(e)
+      logger.error("Error during scan: %s" % error_text)
+      self.error = error_text
 
   def sync(self):
     
+    self.error = None
+    
     if self.compare_info == None:
       self.scan()
+    
+    if self.has_error():
+      return
+    
+    try:  
+      if self.tool_sync_config.repository.transfer_to_remote:
+        self.compare_info.transfer_new_files_to_remote()
+        self.compare_info.transfer_modified_files_to_remote()
+        self.compare_info.update_local_timestamps()
       
-    if self.tool_sync_config.repository.transfer_to_remote:
-      self.compare_info.transfer_new_files_to_remote()
-      self.compare_info.transfer_modified_files_to_remote()
-      self.compare_info.update_local_timestamps()
+      if self.tool_sync_config.repository.transfer_to_local:
+        self.compare_info.transfer_new_files_from_remote()
+        self.compare_info.transfer_modified_files_from_remote()
       
-    if self.tool_sync_config.repository.transfer_to_local:
-      self.compare_info.transfer_new_files_from_remote()
-      self.compare_info.transfer_modified_files_from_remote()
+      self.compare_info = None
+    
+    except Exception as e:
+      
+      self.error = str(e)
+    
+  def is_scanned(self):
+    
+    return self.compare_info != None
+    
+  def is_sync_required(self):
+    
+    return self.compare_info.is_sync_required()
+    
+  def has_error(self):
+    
+    return self.error != None
+    
+  def get_compare_info(self):
+    
+    return self.compare_info
+    
+  def get_sync_summary(self):
+    
+    if self.has_error():
+      
+      return self.error
+      
+    elif self.is_scanned():
+      
+      return self.compare_info.get_sync_summary()
+      
+    else:
+      
+      return "requires scan"
   
 def find_sync_configs(base_path='..'):
   
@@ -409,4 +479,10 @@ def find_sync_configs(base_path='..'):
     
   return configs
   
+def test():
+  
+  find_sync_configs()
+    
+if __name__ == '__main__':
+  test()
 

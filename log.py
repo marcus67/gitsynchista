@@ -2,7 +2,7 @@ import logging
 import logging.handlers
 import sys
 
-global logger 
+#global logger 
 
 def open_logging():
   
@@ -33,7 +33,7 @@ def open_logging():
 
   # add ch to logger
   logger.addHandler(ch)
-  logger.addHandler(fh)
+  #logger.addHandler(fh)
   
   logger.info("Start logging")
   return logger
