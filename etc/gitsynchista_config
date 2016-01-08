@@ -7,4 +7,5 @@ epoch_delta = 3600
 name = gitsynchista
 local_path = .
 remote_path = /gitsynchista
+auto_scan = 1
 

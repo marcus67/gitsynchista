@@ -41,3 +41,7 @@ transfer_to_remote = True
 # Allow transfers from remote WebDav directory to local directory tree.
 transfer_to_local = True
 
+# GUI only: automatically (re-)scan this repository. If not set the repository must be scanned 
+# manually before a sync is possible.
+auto_scan = False
+

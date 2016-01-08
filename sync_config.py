@@ -26,9 +26,10 @@ class RepositoryConfig(config.BaseConfig):
     self.remote_path = None
     self.transfer_to_remote = True
     self.transfer_to_local = True
+    self.auto_scan = False
 
   def getBooleanAttributes(self):
-    return ('transfer_to_remote', 'transfer_to_local')
+    return ('transfer_to_remote', 'transfer_to_local', 'auto_scan')
           
 class SyncConfig(config.BaseConfig):
   
