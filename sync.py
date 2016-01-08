@@ -22,11 +22,14 @@ GIT_IGNORE_FILE = '.gitignore'
 GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
 GITSYNCHISTA_CONFIG_FILE = 'gitsynchista_config'
 
-ADDITIONAL_IGNORE_PATTERNS = '|\..*'
+ADDITIONAL_IGNORE_PATTERNS = '.*'
+
+SUPPRESS_PATTERNS = '.git'
 
 global logger
 
 logger = log.open_logging()
+
 
 class File(object):
   
@@ -55,14 +58,23 @@ class IgnoreInfo(object):
     
     global logger
     
-    pattern_string = ('^' + file_string.replace('.','\.').replace('*', '.*').replace('\n','$|^') + '$').replace('|^$', '') + ADDITIONAL_IGNORE_PATTERNS
-    logger.info("Created IgnoreInfo with pattern regex '%s'" % pattern_string)
-    self.regex = re.compile(pattern_string)        
+    if len(file_string) > 0:
+      pattern_string = ('^' + file_string.replace('.','\.').replace('*', '.*').replace('\n','$|^') + '$').replace('|^$', '')
+      logger.info("Created IgnoreInfo with pattern regex '%s'" % pattern_string)
+      self.regex = re.compile(pattern_string)     
+    else:
+      self.regex = None   
     
   def is_ignored(self, name):
     
-    return self.regex.match(name) != None
+    if self.regex:
+      return self.regex.match(name) != None
+    else:
+      return False
     
+global_ignore_info = IgnoreInfo(ADDITIONAL_IGNORE_PATTERNS)
+global_suppress_info = IgnoreInfo(SUPPRESS_PATTERNS)
+
 class FileAccess(object):
   
   def __init__(self, root_path):
@@ -78,12 +90,15 @@ class FileAccess(object):
     github_ignore_info = self.load_ignore_info(os.path.join(base_path, GIT_IGNORE_FILE))
     gitsynchista_ignore_info = self.load_ignore_info(os.path.join(base_path, GITSYNCHISTA_IGNORE_FILE))
     for f in os.listdir(base_path):
-      is_ignored = parent_is_ignored or (github_ignore_info != None and github_ignore_info.is_ignored(f)) or (gitsynchista_ignore_info != None and gitsynchista_ignore_info.is_ignored(f))
+      is_ignored = parent_is_ignored or github_ignore_info.is_ignored(f) or gitsynchista_ignore_info.is_ignored(f) or global_ignore_info.is_ignored(f) or global_suppress_info.is_ignored(f)
       path = os.path.join(base_path, f)
       attr = os.stat(path)
       isDirectory = os.path.isdir(path)
       if isDirectory:
-        sub_files = self.load_directory(base_path=path, parent_is_ignored=is_ignored)
+        if global_suppress_info.is_ignored(f):
+          sub_files = None
+        else:
+          sub_files = self.load_directory(base_path=path, parent_is_ignored=is_ignored)
       else:
         sub_files = None
       
@@ -150,10 +165,13 @@ class WebDavFileAccess(FileAccess):
       if base_path == f.name:
         continue 
       base_name = os.path.basename(f.name)
-      is_ignored = parent_is_ignored or (ignore_info != None and ignore_info.is_ignored(base_name))
+      is_ignored = parent_is_ignored or ignore_info.is_ignored(base_name) or global_ignore_info.is_ignored(base_name) or global_suppress_info.is_ignored(base_name)
       #print f.name
       if f.mtime == '':
-        sub_files = self.load_directory(base_path=f.name, parent_is_ignored=is_ignored)
+        if global_suppress_info.is_ignored(base_name):
+          sub_files = None
+        else:
+          sub_files = self.load_directory(base_path=f.name, parent_is_ignored=is_ignored)
         mtime = 0
       else:
         sub_files = None
@@ -404,6 +422,12 @@ class SyncTool(object):
       logger.error("Error during scan: %s" % error_text)
       self.error = error_text
 
+  def auto_scan(self):
+    
+    if (self.tool_sync_config.repository.auto_scan and 
+        not (self.has_error() or self.is_scanned())):
+      self.scan()
+      
   def sync(self):
     
     self.error = None

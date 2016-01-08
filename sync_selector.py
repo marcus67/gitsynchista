@@ -62,6 +62,8 @@ class SyncSelector(ui_util.ViewController):
 
     for tool in self.sync_tools:
      
+      tool.auto_scan()
+      
       logger.debug("add tool '%s' to list" % tool.get_name())
       line = "%s: %s" % (tool.get_name(), tool.get_sync_summary())
       
