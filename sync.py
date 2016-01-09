@@ -11,11 +11,13 @@ import StringIO
 import config
 import log
 import sync_config
+import working_copy
 
 reload(log)
 reload(client)
 reload(config)
 reload(sync_config)
+reload(working_copy)
 
 
 GIT_IGNORE_FILE = '.gitignore'
@@ -379,10 +381,19 @@ class SyncTool(object):
     self.tool_sync_config = tool_sync_config
     self.compare_info = None
     self.error = None
+    self.working_copy_support = None
+    
+    if self.tool_sync_config.repository.working_copy_wakeup:      
+      self.working_copy_support = working_copy.WorkingCopySupport(self.tool_sync_config.webdav)
     
   def get_name(self):
     
     return self.tool_sync_config.repository.name
+    
+  def wakeup_webdav_server(self):
+    
+    if self.working_copy_support:
+      self.working_copy_support.wakeup_webdav_server()
     
   def scan(self):
     
@@ -391,8 +402,15 @@ class SyncTool(object):
     self.error = None
     try:
 
+      self.wakeup_webdav_server()
+      if self.tool_sync_config.webdav.username:
+        username = self.tool_sync_config.webdav.username
+        password = self.tool_sync_config.webdav.password
+      else:
+        username = None
+        password = None
       webdav_client = client.Client(self.tool_sync_config.webdav.server, port=self.tool_sync_config.webdav.port,
-                     protocol='http', verify_ssl=False, cert=None, username=self.tool_sync_config.webdav.username, password=self.tool_sync_config.webdav.password)
+                     protocol='http', verify_ssl=False, cert=None, username=username, password=password)
       local_file_access = FileAccess(self.tool_sync_config.repository.local_path)
       remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)    
   
@@ -438,7 +456,8 @@ class SyncTool(object):
     if self.has_error():
       return
     
-    try:  
+    try:
+      self.wakeup_webdav_server()  
       if self.tool_sync_config.repository.transfer_to_remote:
         self.compare_info.transfer_new_files_to_remote()
         self.compare_info.transfer_modified_files_to_remote()

@@ -8,4 +8,5 @@ name = gitsynchista
 local_path = .
 remote_path = /gitsynchista
 auto_scan = 1
+#working_copy_wakeup = True
 

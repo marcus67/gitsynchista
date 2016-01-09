@@ -45,3 +45,7 @@ transfer_to_local = True
 # manually before a sync is possible.
 auto_scan = False
 
+# Assume that the WebDav server is hosted by "working copy". Send a wakeup command to the server
+working_copy_wakeup = False
+
+
