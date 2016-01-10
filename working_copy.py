@@ -10,6 +10,8 @@ import sync_config
 reload(log)
 reload(sync_config)
 
+PARAM_IGNORE_WAKEUP = 'IGNORE_WAKEUP'
+
 global logger
 
 logger = log.open_logging()
@@ -50,7 +52,7 @@ class WorkingCopySupport (object):
   def wakeup_webdav_server(self):
     
     payload = { 'cmd' : 'start',
-                'x-success' : 'pythonista:///' }
+                'x-success' : 'pythonista://gitsynchista/gitsynchista?action=run&argv=%s' % PARAM_IGNORE_WAKEUP}
     self._send_to_working_copy(action='webdav', payload=payload)
     time.sleep(1)
     

@@ -11,14 +11,11 @@ import StringIO
 import config
 import log
 import sync_config
-import working_copy
 
 reload(log)
 reload(client)
 reload(config)
 reload(sync_config)
-reload(working_copy)
-
 
 GIT_IGNORE_FILE = '.gitignore'
 GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
@@ -31,7 +28,6 @@ SUPPRESS_PATTERNS = '.git'
 global logger
 
 logger = log.open_logging()
-
 
 class File(object):
   
@@ -381,19 +377,12 @@ class SyncTool(object):
     self.tool_sync_config = tool_sync_config
     self.compare_info = None
     self.error = None
-    self.working_copy_support = None
     
-    if self.tool_sync_config.repository.working_copy_wakeup:      
-      self.working_copy_support = working_copy.WorkingCopySupport(self.tool_sync_config.webdav)
     
   def get_name(self):
     
     return self.tool_sync_config.repository.name
     
-  def wakeup_webdav_server(self):
-    
-    if self.working_copy_support:
-      self.working_copy_support.wakeup_webdav_server()
     
   def scan(self):
     
@@ -402,7 +391,6 @@ class SyncTool(object):
     self.error = None
     try:
 
-      self.wakeup_webdav_server()
       if self.tool_sync_config.webdav.username:
         username = self.tool_sync_config.webdav.username
         password = self.tool_sync_config.webdav.password
@@ -457,7 +445,6 @@ class SyncTool(object):
       return
     
     try:
-      self.wakeup_webdav_server()  
       if self.tool_sync_config.repository.transfer_to_remote:
         self.compare_info.transfer_new_files_to_remote()
         self.compare_info.transfer_modified_files_to_remote()
@@ -509,9 +496,7 @@ def find_sync_configs(base_path='..'):
   configs = []
   
   for (dirpath, dirnames, filenames) in os.walk(base_path, topdown=True, onerror=None, followlinks=False):
-    
     for filename in filenames:
-      
       if filename == GITSYNCHISTA_CONFIG_FILE:
         config_filenames.append( os.path.join(dirpath, filename) )
         
