@@ -2,9 +2,11 @@ import ui
 
 import ui_util
 import log
+import popup
 
 reload(ui_util)
 reload(log)
+reload(popup)
 
 global logger
 
@@ -18,6 +20,7 @@ class SyncSelector(ui_util.ViewController):
     self.selected_index = None
     self.popup_vc = None
     self.load('sync_selector')
+    self.popup_vc = None
          
   def get_selected_mode(self):
     
@@ -44,7 +47,7 @@ class SyncSelector(ui_util.ViewController):
     self.selected_index = None
     self.list_data_source = ui.ListDataSource([])
 
-    self.update_tool_states()
+    self.retrieve_tool_states()
     self.update_view_states()
     
     self.present(style)
@@ -53,50 +56,58 @@ class SyncSelector(ui_util.ViewController):
       self.view.wait_modal()
     
     
-  def update_tool_states(self):
+  def update_tool_state(self, selected_index):
     
     global logger
     
-    logger.info("update_tool_states: selected_index=%s" % str(self.selected_index))
+    logger.info("update_tool_state: selected_index=%s" % str(selected_index))
     items = []
 
-    for tool in self.sync_tools:
-     
-      tool.auto_scan()
+    tool = self.sync_tools[selected_index]
+    tool.auto_scan()
       
-      logger.debug("add tool '%s' to list" % tool.get_name())
-      line = "%s: %s" % (tool.get_name(), tool.get_sync_summary())
+    logger.debug("build menu entry for sync config '%s' to list" % tool.get_name())
+    line = "%s: %s" % (tool.get_name(), tool.get_sync_summary())
+    entryMap = { 'title' : line }
       
-      logger.info("line=%s" % line)
-
-      entryMap = { 'title' : line }
-      
-      if tool.has_error():
-        entryMap['image'] = 'ionicons-ios7-bolt-outline-32'        
-      elif tool.is_scanned():
-        if tool.is_sync_required():
-          entryMap['image'] = 'ionicons-ios7-refresh-outline-32'
-        else:
-          entryMap['image'] = 'ionicons-ios7-checkmark-outline-32'
+    add_accessory = False
+    if tool.has_error():
+      entryMap['image'] = 'ionicons-ios7-bolt-outline-32'        
+      add_accessory = True
+    elif tool.is_scanned():
+      if tool.is_sync_required():
+        entryMap['image'] = 'ionicons-ios7-refresh-outline-32'
+        add_accessory = True
       else:
-        entryMap['image'] = 'ionicons-ios7-search-32'
+        entryMap['image'] = 'ionicons-ios7-checkmark-outline-32'
+    else:
+      entryMap['image'] = 'ionicons-ios7-search-32'
         
+    if add_accessory: 
+        
+      entryMap['accessory_type'] = 'detail_button'
+      logger.debug("add accessory for sync config '%s'" % tool.get_name())
+        
+    self.tableview_sync_selector.data_source.items[selected_index] = entryMap
+    
+    
+  def retrieve_tool_states(self):
+    
+    global logger
+    
+    logger.info("retrieve_tool_states")
+    items = []
+   
+    for tool in self.sync_tools:
+      items.append({})
 
-
-#      if mode.isImmutable: 
-#        
-#      if len(mode.comment) > 0:
-#        entryMap['accessory_type'] = 'detail_button'
-#        logger.debug("add accessory for mode '%s'" % mode.name)
-        
-      items.append(entryMap)
-        
-    #self.list_data_source.highlight_color = defaults.COLOR_LIGHT_GREEN
     self.tableview_sync_selector.data_source.items = items
+    i = 0
+    for tool in self.sync_tools:
     
-    if self.selected_index != None:
-      self.tableview_sync_selector.data_source.selected_row = self.selected_index
-    
+      self.update_tool_state(i) 
+      i = i + 1
+ 
     
   def update_view_states(self):
     
@@ -107,7 +118,10 @@ class SyncSelector(ui_util.ViewController):
     if self.selected_index != None:
       
       sync_tool = self.sync_tools[self.selected_index]
-      if sync_tool.is_scanned():
+      if sync_tool.has_error():
+        scan_active = True
+        sync_active = False        
+      elif sync_tool.is_scanned():
         scan_active = False
         sync_active = sync_tool.is_sync_required()
       else:
@@ -122,6 +136,9 @@ class SyncSelector(ui_util.ViewController):
     self.button_scan.enabled = scan_active
     self.button_sync.enabled = sync_active
 
+    if self.selected_index != None:
+      self.tableview_sync_selector.data_source.selected_row = self.selected_index
+
   def handle_action(self, sender):
     
     global logger
@@ -135,13 +152,13 @@ class SyncSelector(ui_util.ViewController):
     elif sender.name == 'button_sync':
       logger.debug("handle_action from sync button")
       self.execute_sync()
-      self.update_tool_states()
+      self.update_tool_state(self.selected_index)
       self.update_view_states()
       
     elif sender.name == 'button_scan':
       logger.debug("handle_action from scan button")
       self.execute_scan()
-      self.update_tool_states()
+      self.update_tool_state(self.selected_index)
       self.update_view_states()
       
     if close:
@@ -149,6 +166,21 @@ class SyncSelector(ui_util.ViewController):
       if self.parent_view:
         self.parent_view.handle_action(self)
         
+  def handle_accessory(self, sender):
+    
+    global logger
+    
+    logger.info("handle_accessory row=%d" % sender.tapped_accessory_row)
+    
+             
+    if not self.popup_vc:
+      self.popup_vc = popup.PopupViewController()
+
+    comment = self.sync_tools[sender.tapped_accessory_row].get_sync_details()
+    self.popup_vc.present(comment)
+
+
+
   def execute_scan(self):
     
     if self.selected_index != None:
@@ -162,15 +194,4 @@ class SyncSelector(ui_util.ViewController):
       sync_tool.sync()
       sync_tool.scan()
       
-  def handle_accessory(self, sender):
-    
-    global logger
-    
-    logger.debug("handle_accessory row=%d" % sender.tapped_accessory_row)
-    comment = self.modes[sender.tapped_accessory_row].comment
-         
-    if not self.popup_vc:
-      self.popup_vc = popup.PopupViewController()
-
-    self.popup_vc.present(comment, close_label=self.close_label)
-
+  

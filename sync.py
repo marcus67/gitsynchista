@@ -184,7 +184,7 @@ class WebDavFileAccess(FileAccess):
     
     global logger
     
-    logger.info("Saving string to WebDav:%s" % path)
+    logger.debug("Saving string to WebDav:%s" % path)
     string_file = StringIO.StringIO(string)
     self.webdav_client.upload(string_file, path)
   
@@ -194,7 +194,7 @@ class WebDavFileAccess(FileAccess):
     
     string_file = StringIO.StringIO()
     self.webdav_client.download(path, string_file)
-    logger.info("Loading 'WebDav:%s' into string" % path)
+    logger.debug("Loading 'WebDav:%s' into string" % path)
     return str(string_file.getvalue())
 
   def set_mtime(self, path, mtime):
@@ -347,6 +347,32 @@ class CompareInfo(object):
     else:
     
       return "all files in sync"
+      
+  def get_sync_details(self):
+    
+    details = "New files and modifications of existing files:"
+    
+    if len(self.local_change_info.new_files) > 0:
+      details = details + "\n\nLocal new files: \n"
+      for file in self.local_change_info.new_files:
+        details = details + "\n    " + file.physical_name 
+
+    if len(self.local_change_info.modified_files) > 0:
+      details = details + "\n\nLocal modified files: \n"
+      for file in self.local_change_info.modified_files:
+        details = details + "\n    " + file.physical_name 
+        
+    if len(self.remote_change_info.new_files) > 0:
+      details = details + "\n\nRemote new files: \n"
+      for file in self.remote_change_info.new_files:
+        details = details + "\n    " + file.physical_name 
+
+    if len(self.remote_change_info.modified_files) > 0:
+      details = details + "\n\nRemote modified files: \n"
+      for file in self.remote_change_info.modified_files:
+        details = details + "\n    " + file.physical_name 
+        
+    return details
     
 def make_file_dictionary(files, file_dict=None):
   
@@ -472,6 +498,10 @@ class SyncTool(object):
     
     return self.error != None
     
+  def get_error_text(self):
+    
+    return self.error
+    
   def get_compare_info(self):
     
     return self.compare_info
@@ -480,7 +510,10 @@ class SyncTool(object):
     
     if self.has_error():
       
-      return self.error
+      if self.is_scanned():
+        return "Error during sync"
+      else:
+        return "Error during scan"
       
     elif self.is_scanned():
       
@@ -489,7 +522,15 @@ class SyncTool(object):
     else:
       
       return "requires scan"
+
   
+  def get_sync_details(self):
+    if self.has_error():
+      return self.get_error_text()
+    else:
+      return self.compare_info.get_sync_details()
+    
+    
 def find_sync_configs(base_path='..'):
   
   config_filenames = []
