@@ -60,7 +60,7 @@ class SyncSelector(ui_util.ViewController):
     
     global logger
     
-    logger.info("update_tool_state: selected_index=%s" % str(selected_index))
+    logger.debug("update_tool_state: selected_index=%s" % str(selected_index))
     items = []
 
     tool = self.sync_tools[selected_index]
@@ -95,7 +95,7 @@ class SyncSelector(ui_util.ViewController):
     
     global logger
     
-    logger.info("retrieve_tool_states")
+    logger.debug("retrieve_tool_states")
     items = []
    
     for tool in self.sync_tools:
@@ -113,7 +113,7 @@ class SyncSelector(ui_util.ViewController):
     
     global logger
     
-    logger.info("update_view_states: selected_index=%s" % str(self.selected_index))
+    logger.debug("update_view_states: selected_index=%s" % str(self.selected_index))
     
     if self.selected_index != None:
       
@@ -170,8 +170,7 @@ class SyncSelector(ui_util.ViewController):
     
     global logger
     
-    logger.info("handle_accessory row=%d" % sender.tapped_accessory_row)
-    
+    logger.debug("handle_accessory row=%d" % sender.tapped_accessory_row)   
              
     if not self.popup_vc:
       self.popup_vc = popup.PopupViewController()

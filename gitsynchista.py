@@ -31,7 +31,7 @@ def load_config_file_and_sync(config_filename):
     
   except Exception as e:
     
-    logger.error("Exception %s during scan" % str(e))
+    logger.exception("Exception %s during scan" % str(e))
     return
   
   try:
@@ -40,7 +40,7 @@ def load_config_file_and_sync(config_filename):
     
   except Exception as e:
     
-    logger.error("Exception %s during sync" % str(e))
+    logger.exception("Exception %s during sync" % str(e))
   
 def wakeup_webdav_server(webdav_config):
   
@@ -85,6 +85,7 @@ def main():
   
   logger = log.open_logging()
   
+  logger.info('Starting gitsynchista')
   if len(sys.argv) == 2:  
     if (sys.argv[1].startswith(working_copy.PARAM_IGNORE_WAKEUP)):
       start_gui(False)
@@ -92,6 +93,7 @@ def main():
       load_config_file_and_sync(sys.argv[1])
   else:
     start_gui(True)
+  logger.info('Terminating gitsynchista')
   
 if __name__ == '__main__':
   main()
