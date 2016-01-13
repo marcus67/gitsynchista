@@ -5,9 +5,11 @@ import keychain
 import console
 
 import log
+import util
 import sync_config
 
 reload(log)
+reload(util)
 reload(sync_config)
 
 PARAM_IGNORE_WAKEUP = 'IGNORE_WAKEUP'
@@ -21,7 +23,7 @@ class WorkingCopySupport (object):
   def __init__(self, webdav_config):
     
     self.webdav_config = webdav_config
-    self.key = self._get_key()
+    self.key = util.get_password_from_keychain('Working Copy', 'X-URL-Callback')
     
   def _get_key(self):
     ''' Retrieve the working copy key or prompt for a new one. See https://github.com/ahenry91/wc_sync

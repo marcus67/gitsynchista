@@ -7,15 +7,19 @@ import logging
 import re
 import tempfile
 import StringIO
+import requests
+import keychain
 
 import config
 import log
 import sync_config
+import util
 
 reload(log)
 reload(client)
 reload(config)
 reload(sync_config)
+reload(util)
 
 GIT_IGNORE_FILE = '.gitignore'
 GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
@@ -409,6 +413,9 @@ class SyncTool(object):
     
     return self.tool_sync_config.repository.name
     
+  def get_webdav_service_name(self):
+    
+    return "WebDav Server %s" % self.get_name()
     
   def scan(self):
     
@@ -420,14 +427,22 @@ class SyncTool(object):
       if self.tool_sync_config.webdav.username:
         username = self.tool_sync_config.webdav.username
         password = self.tool_sync_config.webdav.password
+        
+        if password == sync_config.PASSWORD_USE_KEY_CHAIN:
+          password = util.get_password_from_keychain(self.get_webdav_service_name(), username)
+
+        webdav_client = client.Client(self.tool_sync_config.webdav.server,
+                             port=self.tool_sync_config.webdav.port,
+                             protocol='http', verify_ssl=False, cert=None, 
+                             username=username, password=password,
+                             auth_mode=self.tool_sync_config.webdav.auth_mode)
       else:
-        username = None
-        password = None
-      webdav_client = client.Client(self.tool_sync_config.webdav.server, port=self.tool_sync_config.webdav.port,
-                     protocol='http', verify_ssl=False, cert=None, username=username, password=password)
+        webdav_client = client.Client(self.tool_sync_config.webdav.server,
+                             port=self.tool_sync_config.webdav.port,
+                             protocol='http', verify_ssl=False, cert=None)
+                           
       local_file_access = FileAccess(self.tool_sync_config.repository.local_path)
-      remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)    
-  
+      remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)      
       self.compare_info = CompareInfo(local_file_access, remote_file_access)
   
       logger.info("Local files:")
@@ -452,6 +467,7 @@ class SyncTool(object):
       
       error_text = str(e)
       logger.error("Error during scan: %s" % error_text)
+      self.check_reset_keychain(error_text)
       self.error = error_text
 
   def auto_scan(self):
@@ -484,7 +500,16 @@ class SyncTool(object):
     
     except Exception as e:
       
-      self.error = str(e)
+      error_text = str(e)
+      logger.error("Error during scan: %s" % error_text)
+      self.check_reset_keychain(error_text)
+      self.error = error_text
+    
+  def check_reset_keychain(self, error):
+    
+      if self.tool_sync_config.webdav.username and '401 Unauthorized' in error:
+        logger.info("Authentication error: resetting password in keychain")
+        keychain.delete_password(self.get_webdav_service_name(), self.tool_sync_config.webdav.username)
     
   def is_scanned(self):
     
@@ -538,7 +563,7 @@ def find_sync_configs(base_path='..'):
   
   for (dirpath, dirnames, filenames) in os.walk(base_path, topdown=True, onerror=None, followlinks=False):
     for filename in filenames:
-      if filename == GITSYNCHISTA_CONFIG_FILE:
+      if filename.startswith(GITSYNCHISTA_CONFIG_FILE):
         config_filenames.append( os.path.join(dirpath, filename) )
         
   for filename in config_filenames:
@@ -554,4 +579,3 @@ def test():
     
 if __name__ == '__main__':
   test()
-

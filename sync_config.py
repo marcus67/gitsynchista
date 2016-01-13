@@ -1,16 +1,20 @@
 import config
+import client
 
 reload(config)
+reload(client)
+
+PASSWORD_USE_KEY_CHAIN = 'USE_KEY_CHAIN'
 
 class WebDavConfig(config.BaseConfig):
   
   def __init__(self):
     
-    #super(WebDavConfig, self).__init__():
     self.server = 'localhost'
     self.port = 8080
+    self.auth_mode = client.AUTH_MODE_DIGEST
     self.username = None
-    self.password = None
+    self.password = PASSWORD_USE_KEY_CHAIN
     self.epoch_delta = 3600
     
   def getIntAttributes(self):
@@ -37,4 +41,3 @@ class SyncConfig(config.BaseConfig):
   def __init__(self):
     self.webdav = WebDavConfig()
     self.repository = RepositoryConfig()  
-
