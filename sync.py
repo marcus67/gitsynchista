@@ -10,19 +10,22 @@ import StringIO
 import requests
 import keychain
 
-import config
 import log
+import config
 import sync_config
 import util
+import working_copy
 
 reload(log)
 reload(client)
 reload(config)
 reload(sync_config)
 reload(util)
+reload(working_copy)
 
 GIT_IGNORE_FILE = '.gitignore'
 GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
+GITSYNCHISTA_IGNORE_FILE_2 = 'gitsynchista_ignore.txt'
 GITSYNCHISTA_CONFIG_FILE = 'gitsynchista_config'
 
 ADDITIONAL_IGNORE_PATTERNS = '.*'
@@ -31,7 +34,7 @@ SUPPRESS_PATTERNS = '.git'
 
 global logger
 
-logger = log.open_logging()
+logger = log.open_logging(__name__)
 
 class File(object):
   
@@ -62,7 +65,7 @@ class IgnoreInfo(object):
     
     if len(file_string) > 0:
       pattern_string = ('^' + file_string.replace('.','\.').replace('*', '.*').replace('\n','$|^') + '$').replace('|^$', '')
-      logger.info("Created IgnoreInfo with pattern regex '%s'" % pattern_string)
+      logger.debug("Created IgnoreInfo with pattern regex '%s'" % pattern_string)
       self.regex = re.compile(pattern_string)     
     else:
       self.regex = None   
@@ -91,8 +94,9 @@ class FileAccess(object):
     files = []
     github_ignore_info = self.load_ignore_info(os.path.join(base_path, GIT_IGNORE_FILE))
     gitsynchista_ignore_info = self.load_ignore_info(os.path.join(base_path, GITSYNCHISTA_IGNORE_FILE))
+    gitsynchista_ignore_info_2 = self.load_ignore_info(os.path.join(base_path, GITSYNCHISTA_IGNORE_FILE_2))
     for f in os.listdir(base_path):
-      is_ignored = parent_is_ignored or github_ignore_info.is_ignored(f) or gitsynchista_ignore_info.is_ignored(f) or global_ignore_info.is_ignored(f) or global_suppress_info.is_ignored(f)
+      is_ignored = parent_is_ignored or github_ignore_info.is_ignored(f) or   gitsynchista_ignore_info.is_ignored(f) or gitsynchista_ignore_info_2.is_ignored(f) or global_ignore_info.is_ignored(f) or global_suppress_info.is_ignored(f)
       path = os.path.join(base_path, f)
       attr = os.stat(path)
       isDirectory = os.path.isdir(path)
@@ -268,12 +272,12 @@ def update_source_timestamps(change_info, source_file_access, dest_file_access):
   for file in all_files:
     
     if not file.name in updated_dest_file_dict:
-      logger.warning("source file '%s' not found in upated destination file list -> cannot update timestamp" % file.name)
+      logger.warning("source file '%s' not found in updated destination file list -> cannot update timestamp" % file.name)
       continue
       
     dest_file = updated_dest_file_dict[file.name]
     if dest_file.mtime > file.mtime:
-      logger.info("updating mtime of '%s' from %s to %s" % (file.name, time.ctime(file.mtime), time.ctime(dest_file.mtime)))
+      logger.info("Updating mtime of '%s' from %s to %s" % (file.name, time.ctime(file.mtime), time.ctime(dest_file.mtime)))
       source_file_access.set_mtime(file.physical_name, dest_file.mtime)
   
 
@@ -395,7 +399,7 @@ def dump_files(files, indent=0):
   global logger
 
   for f in files:
-    logger.info("%s %s" % (" " * indent, str(f)))
+    logger.debug("%s %s" % (" " * indent, str(f)))
     if f.is_directory():
       dump_files(f.sub_files, indent = indent + 4)
 
@@ -407,7 +411,7 @@ class SyncTool(object):
     self.tool_sync_config = tool_sync_config
     self.compare_info = None
     self.error = None
-    
+    self.working_copy_tool = working_copy.WorkingCopySupport(tool_sync_config)
     
   def get_name(self):
     
@@ -445,29 +449,29 @@ class SyncTool(object):
       remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)      
       self.compare_info = CompareInfo(local_file_access, remote_file_access)
   
-      logger.info("Local files:")
+      logger.debug("Local files:")
       dump_files(self.compare_info.local_files)
-      logger.info("Remote files:")
+      logger.debug("Remote files:")
       dump_files(self.compare_info.remote_files)
   
-      logger.info("Local new files:")
+      logger.debug("Local new files:")
       for file in self.compare_info.local_change_info.new_files:
-        logger.info("    %s" % str(file))
-      logger.info("Local modified files:")
+        logger.debug("    %s" % str(file))
+      logger.debug("Local modified files:")
       for file in self.compare_info.local_change_info.modified_files:
-        logger.info("    %s" % str(file))
-      logger.info("Remote new files:")
+        logger.debug("    %s" % str(file))
+      logger.debug("Remote new files:")
       for file in self.compare_info.remote_change_info.new_files:
-        logger.info("    %s" % str(file))
-      logger.info("Remote modified files:")
+        logger.debug("    %s" % str(file))
+      logger.debug("Remote modified files:")
       for file in self.compare_info.remote_change_info.modified_files:
-        logger.info("    %s" % str(file))
+        logger.debug("    %s" % str(file))
 
     except Exception as e:
       
       error_text = str(e)
       logger.error("Error during scan: %s" % error_text)
-      self.check_reset_keychain(error_text)
+      self.interpret_error(error_text)
       self.error = error_text
 
   def auto_scan(self):
@@ -502,18 +506,27 @@ class SyncTool(object):
       
       error_text = str(e)
       logger.error("Error during scan: %s" % error_text)
-      self.check_reset_keychain(error_text)
+      self.interpret_error(error_text)
       self.error = error_text
     
-  def check_reset_keychain(self, error):
+  def interpret_error(self, error):
     
       if self.tool_sync_config.webdav.username and '401 Unauthorized' in error:
+        self.short_error_text = "Authentication failed"
         logger.info("Authentication error: resetting password in keychain")
         keychain.delete_password(self.get_webdav_service_name(), self.tool_sync_config.webdav.username)
-    
+      elif 'Connection refused' in error:
+        self.short_error_text = "Server unreachable/down"
+      else:
+        self.short_error_text = "Cause unknown"
+      
   def is_scanned(self):
     
     return self.compare_info != None
+    
+  def working_copy_active(self):
+    
+    return self.tool_sync_config.repository.working_copy_wakeup
     
   def is_sync_required(self):
     
@@ -536,9 +549,9 @@ class SyncTool(object):
     if self.has_error():
       
       if self.is_scanned():
-        return "Error during sync"
+        return "Error during sync: %s" % self.short_error_text
       else:
-        return "Error during scan"
+        return "Error during scan: %s" % self.short_error_text 
       
     elif self.is_scanned():
       
@@ -546,7 +559,7 @@ class SyncTool(object):
       
     else:
       
-      return "requires scan"
+      return "Requires scan"
 
   
   def get_sync_details(self):
@@ -554,6 +567,13 @@ class SyncTool(object):
       return self.get_error_text()
     else:
       return self.compare_info.get_sync_details()
+      
+  def open_working_copy_repository(self):
+    
+    global logger
+    
+    if self.working_copy_active():
+      self.working_copy_tool.open_repository()
     
     
 def find_sync_configs(base_path='..'):
