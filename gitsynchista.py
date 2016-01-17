@@ -14,7 +14,9 @@ reload(sync_config)
 reload(sync)
 reload(sync_selector)
 reload(working_copy)
-  
+
+#Use this switch to temporarily disable support for app "working copy"
+ENABLE_WORKING_COPY_SUPPORT = True
 
 def load_config_file_and_sync(config_filename):
   
@@ -31,7 +33,7 @@ def load_config_file_and_sync(config_filename):
     
   except Exception as e:
     
-    logger.exception("Exception %s during scan" % str(e))
+    logger.exception("Exception during scan: %s" % str(e))
     return
   
   try:
@@ -40,11 +42,11 @@ def load_config_file_and_sync(config_filename):
     
   except Exception as e:
     
-    logger.exception("Exception %s during sync" % str(e))
+    logger.exception("Exception during sync: %s" % str(e))
   
-def wakeup_webdav_server(webdav_config):
+def wakeup_webdav_server(config):
   
-    working_copy_support = working_copy.WorkingCopySupport(webdav_config)
+    working_copy_support = working_copy.WorkingCopySupport(config)
     working_copy_support.wakeup_webdav_server()
 
 def start_gui(check_wakeup):
@@ -54,9 +56,10 @@ def start_gui(check_wakeup):
   sync_tools = []
   configs = sync.find_sync_configs()
   working_copy_configs = filter(lambda config:config.repository.working_copy_wakeup, configs)
+  working_copy_active = ENABLE_WORKING_COPY_SUPPORT and len(working_copy_configs) > 0
   
-  if len(working_copy_configs) > 0 and check_wakeup:
-    wakeup_webdav_server(working_copy_configs[0].webdav)
+  if working_copy_active and check_wakeup:
+    wakeup_webdav_server(working_copy_configs[0])
     logger.info("Exiting to await callback from Working Copy...")
     return 
     
@@ -68,22 +71,21 @@ def start_gui(check_wakeup):
     try:
       
       sync_tool = sync.SyncTool(config)
-      #sync_tool.scan()
       sync_tools.append(sync_tool)
       
     except Exception as e:
       
-      logger.info("Error '%s' while processing configuration '%s'" % ( str(e), config.repository.name) )
+      logger.error("Error '%s' while processing configuration '%s'" % ( str(e), config.repository.name) )
     
   selector = sync_selector.SyncSelector()
   
-  selector.select(sync_tools)
+  selector.select(sync_tools, working_copy_active=working_copy_active)
   
 def main():
   
   global logger
   
-  logger = log.open_logging()
+  logger = log.open_logging('gitsynchista', True)
   
   logger.info('Starting gitsynchista')
   if len(sys.argv) == 2:  

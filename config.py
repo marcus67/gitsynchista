@@ -8,7 +8,7 @@ reload(log)
 
 global logger
 
-logger = log.open_logging()
+logger = log.open_logging(__name__)
 
 class BaseConfig(object):
 
@@ -57,7 +57,7 @@ class ConfigHandler(object):
         elif optionValue == '0' or optionValue == 'FALSE' or optionValue == 'NO' or optionValue == 'FALSCH' or optionValue == 'NEIN' or optionValue == 'N':
           setattr(model, option, False)
         else:
-          raise Exception("Invalid Boolean vakue '%s' in option '%s' of section '%s'" % (self.config_file.get(sectionName, option), option, sectionName))
+          raise Exception("Invalid Boolean value '%s' in option '%s' of section '%s'" % (self.config_file.get(sectionName, option), option, sectionName))
 
       elif option in model.getIntAttributes():
         try:
@@ -112,4 +112,3 @@ def test():
     
 if __name__ == '__main__':
   test()
-

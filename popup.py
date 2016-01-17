@@ -17,6 +17,8 @@ class PopupViewController ( ui_util.ViewController ) :
     self.info_text_view = self.find_subview_by_name('textview_info_text')
     self.button_view = self.find_subview_by_name('button_close')
     
+    self.view.width = min(ui.get_screen_size())
+    self.view.height = min(ui.get_screen_size())
     
   def handle_action(self, sender):
     

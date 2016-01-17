@@ -13,7 +13,7 @@ MAX_BITS = 8
 
 global logger
 
-logger = log.open_logging()
+logger = log.open_logging(__name__)
 
 def compute_bit_value(state, old_value, state_bit):
   if state != bool(old_value & state_bit):
@@ -121,7 +121,7 @@ class ViewController (object):
         else:
           if view.subviews:
             for subview in view.subviews:
-              if not name:
+              if not subview.name:
                 continue
               descendent_view = self.find_subview_by_name2(subview, name)
               if descendent_view != None:
@@ -203,4 +203,3 @@ if __name__ == '__main__':
 
 
 ###########################
-

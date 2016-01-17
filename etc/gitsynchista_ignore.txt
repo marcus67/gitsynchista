@@ -1,0 +1,2 @@
+log_config.json
+gitsynchista_config

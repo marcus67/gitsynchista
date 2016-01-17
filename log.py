@@ -1,49 +1,47 @@
 import logging
 import logging.handlers
+import logging.config
 import sys
+import os
+import shutil
+import json
 
-#global logger 
+LOGGING_FILENAME = "etc/log_config.json"
+LOGGING_TEMPLATE_FILENAME = "etc/log_config_template.json"
 
-def open_logging():
+global logging_config_loaded
+
+logging_config_loaded = False
+
+def open_logging(module_name, reload = False):
   
   global logger
+  global logging_config_loaded
   
-  if 'logger' in globals():
-    return logger
+  if reload or not logging_config_loaded:
+    
+    copy_template = os.path.exists(LOGGING_TEMPLATE_FILENAME) and not os.path.exists(LOGGING_FILENAME)
+    if copy_template:
+      shutil.copyfile(LOGGING_TEMPLATE_FILENAME, LOGGING_FILENAME)
+    logging_config_loaded = True
+    logging_config_json_file = open(LOGGING_FILENAME)
+    parsed_logging_data = json.load(logging_config_json_file)
+    logging.config.dictConfig(parsed_logging_data)
 
-  # create logger
-  logger = logging.getLogger('gitsynchista')
-  logger.handlers = []
-  logger.setLevel(logging.DEBUG)
-  
-  # create console handler and set level to debug
-  fh = logging.FileHandler('log/gitsynchista.log', mode='w')
-  fh.setLevel(logging.DEBUG)
-
-  # create console handler and set level to debug
-  ch = logging.StreamHandler()
-  ch.setLevel(logging.INFO)
-
-  # create formatter
-  formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
-  # add formatter to ch
-  ch.setFormatter(formatter)
-  fh.setFormatter(formatter)
-
-  # add ch to logger
-  logger.addHandler(ch)
-  #logger.addHandler(fh)
-  
-  logger.info("Start logging")
-  return logger
+    logger = logging.getLogger('log')
+    if copy_template:
+      logger.info("Copied logging configuration template %s" % LOGGING_TEMPLATE_FILENAME)
+    logger.info("Loaded logging configuration from %s" % LOGGING_FILENAME)  
+    logger.info("Starting logging")
+    
+  return logging.getLogger(module_name)
 
 def test():
   
-  logger = open_logging()
+  logger = open_logging('test', True)
   logger.error("This is an error")
   logger.warning("This is a warning")  
     
 if __name__ == '__main__':
   test()
-
+  

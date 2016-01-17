@@ -16,13 +16,13 @@ PARAM_IGNORE_WAKEUP = 'IGNORE_WAKEUP'
 
 global logger
 
-logger = log.open_logging()
+logger = log.open_logging(__name__)
 
 class WorkingCopySupport (object):
   
-  def __init__(self, webdav_config):
+  def __init__(self, config):
     
-    self.webdav_config = webdav_config
+    self.config = config
     self.key = util.get_password_from_keychain('Working Copy', 'X-URL-Callback')
     
   def _get_key(self):
@@ -47,7 +47,7 @@ class WorkingCopySupport (object):
     fmt = 'working-copy://{x_callback}{action}/?{payload}'
     url = fmt.format(x_callback=x_callback, action=action, payload=payload)
     
-    logger.info("Issuing callback '%s'" % url)
+    logger.debug("Issuing callback '%s'" % url)
     
     wb.open(url)  
     
@@ -56,5 +56,10 @@ class WorkingCopySupport (object):
     payload = { 'cmd' : 'start',
                 'x-success' : 'pythonista://gitsynchista/gitsynchista?action=run&argv=%s' % PARAM_IGNORE_WAKEUP}
     self._send_to_working_copy(action='webdav', payload=payload)
-    time.sleep(1)
+    #time.sleep(1)
+    
+  def open_repository(self):
+    
+    payload = { 'repo' : self.config.repository.remote_path[1:]}
+    self._send_to_working_copy(action='open', payload=payload, x_callback_enabled=False)    
     
