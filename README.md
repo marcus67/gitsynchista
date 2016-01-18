@@ -11,7 +11,7 @@ The tool can be called in GUI mode. The GUI offers additional functionality. Upo
 
 <center><img src="https://raw.githubusercontent.com/marcus67/gitsynchista/master/doc/gitsynchista_gui_without_working_copy.png" width="400"></center>
 
-The user selects entries from the list to either show a modfification summary for each repository.
+The user selects entries from the list to either show a modfification summary for each repository
 
 <center><img src="https://raw.githubusercontent.com/marcus67/gitsynchista/master/doc/modification_info.png" width="400"></center>
 
@@ -51,6 +51,6 @@ It should be placed in some sub directory (preferably `etc`) of the application 
 
 ## Feedback and Questions
 
-For feedback (bug reports) [open an issue at GitHub](https://github.com/marcus67/gitsynchista/issues/new). If you have quetions about the tool see the [Pythonista Forum](https://forum.omz-software.com/category/5/pythonista).
+For feedback (bug reports) [open an issue at GitHub](https://github.com/marcus67/gitsynchista/issues/new). If you have questions about the tool see the [Pythonista Forum](https://forum.omz-software.com/category/5/pythonista).
 
 Have fun!
