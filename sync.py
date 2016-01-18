@@ -48,11 +48,11 @@ class File(object):
     self.is_ignored = is_ignored
     
   def is_directory(self):
-
     return self.sub_files != None
     
   def __str__(self):
-    return "log=%s phys=%s dir=%s ign=%s %s" % (self.name, self.physical_name, self.is_directory(), self.is_ignored, time.ctime(self.mtime))
+    fmt = "log=%s phys=%s dir=%s ign=%s %s"
+    return fmt % (self.name, self.physical_name, self.is_directory(), self.is_ignored, time.ctime(self.mtime))
     
 def compare_files_by_name(file1, file2):
   return cmp(file1.name, file2.name)
@@ -63,7 +63,7 @@ class IgnoreInfo(object):
     
     global logger
     
-    if len(file_string) > 0:
+    if file_string:
       pattern_string = ('^' + file_string.replace('.','\.').replace('*', '.*').replace('\n','$|^') + '$').replace('|^$', '')
       logger.debug("Created IgnoreInfo with pattern regex '%s'" % pattern_string)
       self.regex = re.compile(pattern_string)     
@@ -71,11 +71,7 @@ class IgnoreInfo(object):
       self.regex = None   
     
   def is_ignored(self, name):
-    
-    if self.regex:
-      return self.regex.match(name) != None
-    else:
-      return False
+    return self.regex.match(name) != None if self.regex else False
     
 global_ignore_info = IgnoreInfo(ADDITIONAL_IGNORE_PATTERNS)
 global_suppress_info = IgnoreInfo(SUPPRESS_PATTERNS)
@@ -83,13 +79,11 @@ global_suppress_info = IgnoreInfo(SUPPRESS_PATTERNS)
 class FileAccess(object):
   
   def __init__(self, root_path):
-    
     self.root_path = root_path
   
   def load_directory(self, base_path=None, parent_is_ignored=False):
     
-    if not base_path:
-      base_path = self.root_path
+    base_path = base_path or self.root_path
     logger.info("Loading file directory '%s'" % base_path)
     files = []
     github_ignore_info = self.load_ignore_info(os.path.join(base_path, GIT_IGNORE_FILE))
@@ -114,7 +108,6 @@ class FileAccess(object):
     return files
        
   def file_exists(self, path):
-    
     return os.path.exists(path)
     
   def load_ignore_info(self, ignore_file):
@@ -129,12 +122,10 @@ class FileAccess(object):
       return IgnoreInfo('')
    
   def save_from_string(self, path, string):
-    
     with open(path, "wb") as file:
       file.write(string)
   
   def load_into_string(self, path):
-    
     return open(path, "rb").read()
     
   def set_mtime(self, path, mtime):
@@ -147,16 +138,12 @@ class FileAccess(object):
 class WebDavFileAccess(FileAccess):
   
   def __init__(self, webdav_client, root_path=None):
-    
     super(WebDavFileAccess, self).__init__(root_path)
     self.webdav_client = webdav_client
     
   def file_exists(self, path):
     base_name = os.path.basename(path)
-    if base_name[0] == '.':
-      return False
-    else:
-      return self.webdav_client.exists(path)
+    return False if base_name[0] == '.' else self.webdav_client.exists(path)
     
   def load_directory(self, base_path=None, parent_is_ignored=False):
   
@@ -173,7 +160,7 @@ class WebDavFileAccess(FileAccess):
       base_name = os.path.basename(f.name)
       is_ignored = parent_is_ignored or ignore_info.is_ignored(base_name) or global_ignore_info.is_ignored(base_name) or global_suppress_info.is_ignored(base_name)
       #print f.name
-      if f.mtime == '':
+      if not f.mtime:
         if global_suppress_info.is_ignored(base_name):
           sub_files = None
         else:
@@ -230,7 +217,6 @@ def transfer_modified_files(change_info, source_file_access, dest_file_access):
   global logger
   
   for file in change_info.modified_files:
-    
     if not(file.is_directory()):
       dest_file = change_info.dest_file_dict[file.name]
       logger.info("Transferring '%s' to '%s'" % (file.physical_name, dest_file.physical_name))
@@ -305,7 +291,6 @@ class CompareInfo(object):
     self.remote_change_info = ChangeInfo()
     self.compare()
 
-    
   def compare(self):
   
     self.local_file_dict = make_file_dictionary(self.local_files)
@@ -315,35 +300,27 @@ class CompareInfo(object):
     compare_file_sets(self.remote_file_dict, self.local_file_dict, self.remote_change_info)
 
   def transfer_modified_files_to_remote(self):
-    
     transfer_modified_files(self.local_change_info, self.local_file_access, self.remote_file_access)
     
   def transfer_new_files_to_remote(self):
-    
     transfer_new_files(self.local_change_info, self.local_file_access, self.remote_file_access)
     
   def transfer_modified_files_from_remote(self):
-    
     transfer_modified_files(self.remote_change_info, self.remote_file_access, self.local_file_access)
     
   def transfer_new_files_from_remote(self):
-    
     transfer_new_files(self.remote_change_info, self.remote_file_access, self.local_file_access)
     
   def update_local_timestamps(self):
-    
     update_source_timestamps(self.local_change_info, self.local_file_access, self.remote_file_access)
 
   def get_nr_of_files_to_be_created(self):
-    
     return len(self.local_change_info.new_files) + len(self.remote_change_info.new_files)
     
   def get_nr_of_files_to_be_updated(self):
-    
     return len(self.local_change_info.modified_files) + len(self.remote_change_info.modified_files)
 
   def is_sync_required(self):
-    
     return (self.get_nr_of_files_to_be_created() + self.get_nr_of_files_to_be_updated()) > 0
       
   def get_sync_summary(self):
@@ -357,35 +334,21 @@ class CompareInfo(object):
       return "all files in sync"
       
   def get_sync_details(self):
-    
     details = "New files and modifications of existing files:"
-    
-    if len(self.local_change_info.new_files) > 0:
-      details = details + "\n\nLocal new files: \n"
-      for file in self.local_change_info.new_files:
-        details = details + "\n    " + file.physical_name 
-
-    if len(self.local_change_info.modified_files) > 0:
-      details = details + "\n\nLocal modified files: \n"
-      for file in self.local_change_info.modified_files:
-        details = details + "\n    " + file.physical_name 
-        
-    if len(self.remote_change_info.new_files) > 0:
-      details = details + "\n\nRemote new files: \n"
-      for file in self.remote_change_info.new_files:
-        details = details + "\n    " + file.physical_name 
-
-    if len(self.remote_change_info.modified_files) > 0:
-      details = details + "\n\nRemote modified files: \n"
-      for file in self.remote_change_info.modified_files:
-        details = details + "\n    " + file.physical_name 
-        
+    label_files_dict = {
+      "Local new files": self.local_change_info.new_files,
+      "Local modified files": self.local_change_info.modified_files,
+      "Remote new files": self.remote_change_info.new_files,
+      "Remote modified files": self.remote_change_info.modified_files }
+    for label, files in label_files_dict.iteritems():
+      if files:
+        details += "\n\n{}:\n{}".format(label, "\n".join(
+          "    " + file.physical_name for file in files))
     return details
     
 def make_file_dictionary(files, file_dict=None):
   
-  if not file_dict:
-    file_dict = {}
+  file_dict = file_dict or {}
   for file in files:
     file_dict[file.name] = file
     if file.sub_files:
@@ -414,11 +377,9 @@ class SyncTool(object):
     self.working_copy_tool = working_copy.WorkingCopySupport(tool_sync_config)
     
   def get_name(self):
-    
     return self.tool_sync_config.repository.name
     
   def get_webdav_service_name(self):
-    
     return "WebDav Server %s" % self.get_name()
     
   def scan(self):
@@ -486,7 +447,7 @@ class SyncTool(object):
     
     self.error = None
     
-    if self.compare_info == None:
+    if not self.compare_info:
       self.scan()
     
     if self.has_error():
@@ -512,7 +473,6 @@ class SyncTool(object):
       self.error = error_text
     
   def interpret_error(self, error):
-    
       if self.tool_sync_config.webdav.username and '401 Unauthorized' in error:
         self.short_error_text = "Authentication failed"
         logger.info("Authentication error: resetting password in keychain")
@@ -523,46 +483,29 @@ class SyncTool(object):
         self.short_error_text = "Cause unknown"
       
   def is_scanned(self):
-    
     return self.compare_info != None
     
   def working_copy_active(self):
-    
     return self.tool_sync_config.repository.working_copy_wakeup
     
   def is_sync_required(self):
-    
     return self.compare_info.is_sync_required()
     
   def has_error(self):
-    
     return self.error != None
     
   def get_error_text(self):
-    
     return self.error
     
   def get_compare_info(self):
-    
     return self.compare_info
     
   def get_sync_summary(self):
-    
     if self.has_error():
-      
-      if self.is_scanned():
-        return "Error during sync: %s" % self.short_error_text
-      else:
-        return "Error during scan: %s" % self.short_error_text 
-      
-    elif self.is_scanned():
-      
-      return self.compare_info.get_sync_summary()
-      
+      sync_or_scan = "sync" if self.is_scanned() else "scan"
+      return "Error during %s: %s" % (sync_or_scan, self.short_error_text)
     else:
-      
-      return "Requires scan"
-
+      return self.compare_info.get_sync_summary() if self.is_scanned() else "Requires scan"
   
   def get_sync_details(self):
     if self.has_error():
@@ -596,7 +539,6 @@ def find_sync_configs(base_path='..'):
   return configs
   
 def test():
-  
   find_sync_configs()
     
 if __name__ == '__main__':
