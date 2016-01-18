@@ -432,6 +432,7 @@ class SyncTool(object):
         username = self.tool_sync_config.webdav.username
         password = self.tool_sync_config.webdav.password
         
+        logger.debug('Open WebDAV connection to host %s on port %d for user %s and auth mode %s' % (self.tool_sync_config.webdav.server, self.tool_sync_config.webdav.port, username, self.tool_sync_config.webdav.auth_mode))
         if password == sync_config.PASSWORD_USE_KEY_CHAIN:
           password = util.get_password_from_keychain(self.get_webdav_service_name(), username)
 
@@ -441,6 +442,7 @@ class SyncTool(object):
                              username=username, password=password,
                              auth_mode=self.tool_sync_config.webdav.auth_mode)
       else:
+        logger.debug('Open non-autheticated WebDAV connection to host %s on port %d' % (self.tool_sync_config.webdav.server, self.tool_sync_config.webdav.port))
         webdav_client = client.Client(self.tool_sync_config.webdav.server,
                              port=self.tool_sync_config.webdav.port,
                              protocol='http', verify_ssl=False, cert=None)
