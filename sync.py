@@ -14,6 +14,7 @@ import log
 import config
 import sync_config
 import util
+import url_scheme_support
 import working_copy
 
 reload(log)
@@ -21,6 +22,7 @@ reload(client)
 reload(config)
 reload(sync_config)
 reload(util)
+reload(url_scheme_support)
 reload(working_copy)
 
 GIT_IGNORE_FILE = '.gitignore'
@@ -155,12 +157,13 @@ class WebDavFileAccess(FileAccess):
     files = []
     ignore_info = self.load_ignore_info(os.path.join(base_path, GIT_IGNORE_FILE))
     for f in self.webdav_client.ls(base_path):
+      logger.debug("Found remote file '%s'" % f.name)
       if base_path == f.name:
         continue 
       base_name = os.path.basename(f.name)
       is_ignored = parent_is_ignored or ignore_info.is_ignored(base_name) or global_ignore_info.is_ignored(base_name) or global_suppress_info.is_ignored(base_name)
-      #print f.name
-      if not f.mtime:
+      
+      if f.is_dir:
         if global_suppress_info.is_ignored(base_name):
           sub_files = None
         else:
@@ -235,8 +238,6 @@ def transfer_new_files(change_info, source_file_access, dest_file_access):
     dest_physical_name = os.path.normpath(os.path.join(dest_file_access.root_path, file.name))
   
     if file.is_directory():
-      #logger.warning("Creation of directories not supported yet: create '%s' manually" % file.name)
-      #continue
       logger.info("Creating directory '%s'" % dest_physical_name)
       dest_file_access.mkdir(dest_physical_name)
     else:
@@ -374,7 +375,12 @@ class SyncTool(object):
     self.tool_sync_config = tool_sync_config
     self.compare_info = None
     self.error = None
-    self.working_copy_tool = working_copy.WorkingCopySupport(tool_sync_config)
+    if tool_sync_config.repository.working_copy_wakeup:
+      self.app_support = working_copy.WorkingCopySupport()
+    elif tool_sync_config.repository.auto_open_app:
+      self.app_support = url_scheme_support.UrlSchemeSupport(tool_sync_config.repository.auto_open_app)
+    else:
+      self.app_support = None
     
   def get_name(self):
     return self.tool_sync_config.repository.name
@@ -382,6 +388,12 @@ class SyncTool(object):
   def get_webdav_service_name(self):
     return "WebDav Server %s" % self.get_name()
     
+    
+  def check_open_app(self):
+    
+    if self.app_support and self.tool_sync_config.repository.auto_open_app:
+      self.app_support.open_app()
+      
   def scan(self):
     
     global logger
@@ -389,6 +401,7 @@ class SyncTool(object):
     self.error = None
     try:
 
+      self.check_open_app()
       if self.tool_sync_config.webdav.username:
         username = self.tool_sync_config.webdav.username
         password = self.tool_sync_config.webdav.password
@@ -454,6 +467,7 @@ class SyncTool(object):
       return
     
     try:
+      self.check_open_app()
       if self.tool_sync_config.repository.transfer_to_remote:
         self.compare_info.transfer_new_files_to_remote()
         self.compare_info.transfer_modified_files_to_remote()
@@ -518,7 +532,7 @@ class SyncTool(object):
     global logger
     
     if self.working_copy_active():
-      self.working_copy_tool.open_repository()
+      self.app_tool.open_repository(self.tool_sync_config.repository)
     
     
 def find_sync_configs(base_path='..'):

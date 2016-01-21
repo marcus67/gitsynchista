@@ -31,6 +31,7 @@ class RepositoryConfig(config.BaseConfig):
     self.transfer_to_remote = True
     self.transfer_to_local = True
     self.auto_scan = False
+    self.auto_open_app = None
     self.working_copy_wakeup = False
 
   def getBooleanAttributes(self):

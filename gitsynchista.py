@@ -46,7 +46,7 @@ def load_config_file_and_sync(config_filename):
   
 def wakeup_webdav_server(config):
   
-    working_copy_support = working_copy.WorkingCopySupport(config)
+    working_copy_support = working_copy.WorkingCopySupport()
     working_copy_support.wakeup_webdav_server()
 
 def start_gui(check_wakeup):

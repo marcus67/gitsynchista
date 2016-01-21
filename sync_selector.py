@@ -5,11 +5,13 @@ import Image
 import log
 import ui_util
 import popup
+import url_scheme_support
 import working_copy
 
 reload(log)
 reload(ui_util)
 reload(popup)
+reload(url_scheme_support)
 reload(working_copy)
 
 global logger
@@ -48,6 +50,8 @@ class SyncSelector(ui_util.ViewController):
     self.button_working_copy.image = image    
     
     self.popup_vc = None
+    
+    self.pythonista_app_support = url_scheme_support.UrlSchemeSupport('pythonista')
          
   def get_selected_mode(self):
     
@@ -135,6 +139,8 @@ class SyncSelector(ui_util.ViewController):
     
       self.update_tool_state(i) 
       i = i + 1
+      
+    self.pythonista_app_support.open_app()
  
     
   def update_view_states(self):
@@ -228,6 +234,7 @@ class SyncSelector(ui_util.ViewController):
     if self.selected_index != None:
       sync_tool = self.sync_tools[self.selected_index]
       sync_tool.scan()
+      self.pythonista_app_support.open_app()
       
   def execute_sync(self):
     
@@ -235,5 +242,5 @@ class SyncSelector(ui_util.ViewController):
       sync_tool = self.sync_tools[self.selected_index]
       sync_tool.sync()
       sync_tool.scan()
-      
+      self.pythonista_app_support.open_app()
   

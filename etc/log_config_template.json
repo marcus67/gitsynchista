@@ -51,8 +51,13 @@
             "handlers": ["console", "file"],
             "propagate": 0
         },        
+        "url_scheme_support": {
+            "level": "DEBUG",
+            "handlers": ["console", "file"],
+            "propagate": 0
+        },        
         "working_copy": {
-            "level": "INFO",
+            "level": "DEBUG",
             "handlers": ["console", "file"],
             "propagate": 0
         },        
@@ -63,6 +68,11 @@
         },
         "log": {
             "level": "INFO",
+            "handlers": ["console", "file"],
+            "propagate": 0
+        },
+        "client": {
+            "level": "DEBUG",
             "handlers": ["console", "file"],
             "propagate": 0
         },
