@@ -32,7 +32,7 @@ class BaseConfig(object):
         name = parent_prefix + key
         #print attr_type
         if attr_type in ('int', 'bool', 'str'):
-          logger.debug('%s=%s' % ( name, str(value)))
+          logger.debug('%s=%s' % (name, str(value)))
         else:
           self._dump(value, name + '.')
 
@@ -48,16 +48,18 @@ class ConfigHandler(object):
     for option in self.config_file.options(sectionName):
 
       if not option in model.__dict__:
-        raise Exception("configuration file contains invalid option '%s' in section '%s'" % (option, sectionName))
+        fmt = "configuration file contains invalid option '%s' in section '%s'"
+        raise Exception(fmt % (option, sectionName))
 
       if option in model.getBooleanAttributes():
-        optionValue = string.upper(self.config_file.get(sectionName, option))
-        if optionValue == '1' or optionValue == 'TRUE' or optionValue == 'YES' or optionValue == 'WAHR' or optionValue == 'JA' or optionValue == 'J':
+        optionValue = self.config_file.get(sectionName, option).upper()
+        if optionValue in '1 TRUE YES WAHR JA J'.split():
           setattr(model, option, True)
-        elif optionValue == '0' or optionValue == 'FALSE' or optionValue == 'NO' or optionValue == 'FALSCH' or optionValue == 'NEIN' or optionValue == 'N':
+        elif optionValue in '0 FALSE NO FALSCH NEIN N'.split():
           setattr(model, option, False)
         else:
-          raise Exception("Invalid Boolean value '%s' in option '%s' of section '%s'" % (self.config_file.get(sectionName, option), option, sectionName))
+          fmt = "Invalid Boolean value '%s' in option '%s' of section '%s'"
+          raise Exception(fmt % (self.config_file.get(sectionName, option), option, sectionName))
 
       elif option in model.getIntAttributes():
         try:
@@ -65,7 +67,8 @@ class ConfigHandler(object):
           setattr(model, option, intValue)
 
         except Exception as e:
-          raise Exception("Invalid numeric value '%s' in option '%s' of section '%s'" % (self.config_file.get(sectionName, option), option, sectionName))
+          fmt = "Invalid numeric value '%s' in option '%s' of section '%s'"
+          raise Exception(fmt % (self.config_file.get(sectionName, option), option, sectionName))
                     
       else:
         setattr(model, option, self.config_file.get(sectionName, option))
@@ -75,7 +78,8 @@ class ConfigHandler(object):
     
     global logger
     
-    logger.info("reading configuration file '%s' for config '%s'" % (filename, type(self.config_template).__name__))
+    fmt = "reading configuration file '%s' for config '%s'"
+    logger.info(fmt % (filename, type(self.config_template).__name__))
     self.config_file = ConfigParser.ConfigParser()
     self.config_file.optionxform = str # make options case sensitive
     config = copy.deepcopy(self.config_template)
@@ -88,7 +92,8 @@ class ConfigHandler(object):
         error_message = "Error while reading configuration file '%s'" % filename
             
     except Exception as e:
-      error_message = "Error '%s' while reading configuration file '%s'" % ( str(e), filename )
+      fmt = "Error '%s' while reading configuration file '%s'"
+      error_message = fmt % (str(e), filename )
 
     if error_message:
       raise Exception(error_message)
