@@ -5,7 +5,7 @@
     "class" : "View",
     "nodes" : [
       {
-        "selected" : false,
+        "selected" : true,
         "frame" : "{{0, 74}, {500, 295}}",
         "class" : "TableView",
         "nodes" : [
@@ -13,8 +13,8 @@
         ],
         "attributes" : {
           "uuid" : "55CBACF3-1959-4C21-978A-5E8F7CEC13DF",
-          "flex" : "WH",
           "editing" : false,
+          "data_source_action" : "self.handle_action",
           "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
           "data_source_items" : "Row 1\nRow 2 >\nRow 3 (i)",
           "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
@@ -25,7 +25,7 @@
           "row_height" : 44,
           "data_source_font_size" : 16,
           "name" : "tableview_sync_selector",
-          "data_source_action" : "self.handle_action"
+          "flex" : "WH"
         }
       },
       {
@@ -37,7 +37,7 @@
         ],
         "attributes" : {
           "uuid" : "EF812BD4-D95B-49B3-827B-2C9A4D8E59B3",
-          "font_size" : 15,
+          "flex" : "LT",
           "corner_radius" : 5,
           "background_color" : "RGBA(0.642857,0.821429,1.000000,1.000000)",
           "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
@@ -47,7 +47,7 @@
           "enabled" : true,
           "font_bold" : false,
           "name" : "button_sync",
-          "flex" : "LT"
+          "font_size" : 15
         }
       },
       {
@@ -59,7 +59,7 @@
         ],
         "attributes" : {
           "uuid" : "380E7AE1-8E1D-48EE-8E95-5D8EBE3FD134",
-          "font_size" : 15,
+          "flex" : "LT",
           "corner_radius" : 5,
           "background_color" : "RGBA(0.642857,0.821429,1.000000,1.000000)",
           "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
@@ -69,7 +69,7 @@
           "enabled" : true,
           "font_bold" : false,
           "name" : "button_scan",
-          "flex" : "LT"
+          "font_size" : 15
         }
       },
       {
@@ -94,11 +94,11 @@
 
         ],
         "attributes" : {
-          "uuid" : "184194DC-E365-488C-97F9-1B61E5AA1FD8",
+          "flex" : "L",
           "frame" : "{{171, 162}, {100, 100}}",
           "class" : "ImageView",
           "name" : "imageview_working_copy_icon",
-          "flex" : "L"
+          "uuid" : "184194DC-E365-488C-97F9-1B61E5AA1FD8"
         }
       },
       {
@@ -110,7 +110,7 @@
         ],
         "attributes" : {
           "uuid" : "F226F6B7-BA60-4396-8F9A-429D10EB9817",
-          "flex" : "RT",
+          "font_size" : 14,
           "corner_radius" : 5,
           "frame" : "{{181, 196}, {80, 32}}",
           "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
@@ -121,11 +121,11 @@
           "font_bold" : false,
           "class" : "Button",
           "name" : "button_working_copy",
-          "font_size" : 14
+          "flex" : "RT"
         }
       },
       {
-        "selected" : true,
+        "selected" : false,
         "frame" : "{{54, 377}, {142, 40}}",
         "class" : "Label",
         "nodes" : [
@@ -133,24 +133,24 @@
         ],
         "attributes" : {
           "flex" : "RT",
-          "font_size" : 18,
+          "font_name" : "<System>",
           "frame" : "{{175, 196}, {150, 32}}",
           "uuid" : "509B896F-2F82-4563-8721-1CE4DEF5DDA3",
           "text" : "Open Repository",
           "alignment" : "left",
           "class" : "Label",
-          "name" : "label_open_repository",
-          "font_name" : "<System>"
+          "font_size" : 18,
+          "name" : "label_open_repository"
         }
       }
     ],
     "attributes" : {
-      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
+      "flex" : "",
       "enabled" : true,
+      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
       "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
       "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
-      "name" : "gitsynchista GUI",
-      "flex" : ""
+      "name" : "gitsynchista GUI"
     }
   }
 ]

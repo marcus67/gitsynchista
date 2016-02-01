@@ -178,8 +178,8 @@ class SyncSelector(ui_util.ViewController):
       self.label_open_repository.text_color = 'lightgrey'
       
     if self.selected_index != None:
-      self.tableview_sync_selector.data_source.selected_row = self.selected_index
-
+      self.tableview_sync_selector.selected_row = self.selected_index
+      
   def handle_action(self, sender):
     
     global logger
