@@ -532,7 +532,7 @@ class SyncTool(object):
     global logger
     
     if self.working_copy_active():
-      self.app_tool.open_repository(self.tool_sync_config.repository)
+      self.app_support.open_repository(self.tool_sync_config.repository)
     
     
 def find_sync_configs(base_path='..'):
