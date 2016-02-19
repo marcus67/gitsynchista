@@ -1,3 +1,6 @@
+# coding: utf-8
+# This file is part of https://github.com/marcus67/gitsynchista
+
 import sys
 import client
 import os
@@ -16,6 +19,7 @@ import sync_config
 import util
 import url_scheme_support
 import working_copy
+import pyzipista_support
 
 reload(log)
 reload(client)
@@ -24,6 +28,7 @@ reload(sync_config)
 reload(util)
 reload(url_scheme_support)
 reload(working_copy)
+reload(pyzipista_support)
 
 GIT_IGNORE_FILE = '.gitignore'
 GITSYNCHISTA_IGNORE_FILE = 'gitsynchista_ignore'
@@ -375,12 +380,17 @@ class SyncTool(object):
     self.tool_sync_config = tool_sync_config
     self.compare_info = None
     self.error = None
+    self.pyzipista_config_checked = False
+    self.pyzipista_config = None
+    self.zip_required = True
+
     if tool_sync_config.repository.working_copy_wakeup:
       self.app_support = working_copy.WorkingCopySupport()
     elif tool_sync_config.repository.auto_open_app:
       self.app_support = url_scheme_support.UrlSchemeSupport(tool_sync_config.repository.auto_open_app)
     else:
       self.app_support = None
+    self.check_pyzipista_support()
     
   def get_name(self):
     return self.tool_sync_config.repository.name
@@ -394,6 +404,38 @@ class SyncTool(object):
     if self.app_support and self.tool_sync_config.repository.auto_open_app:
       self.app_support.open_app()
       
+  def check_pyzipista_support(self):
+    global logger
+    
+    if self.pyzipista_config_checked:
+      return
+      
+    self.pyzipista_config_checked = True
+    if not pyzipista_support.pyzipista_found():
+      logger.info('No pyzipista found')
+      return
+    
+    filename = self.tool_sync_config.repository.local_path
+    logger.info('Searching pyzipista config file %s' % filename)
+    self.pyzipista_config = pyzipista_support.find_config(filename)
+    if self.pyzipista_config:
+      logger.info('Found pyzipista config file %s' % filename)
+      
+  def check_pyzipista(self):
+    if not self.pyzipista_config:
+      return
+      
+    self.zip_required = pyzipista_support.load_config_file_and_check_zip_required(self.pyzipista_config)
+    print str(self.zip_required)
+    
+  def execute_pyzipista(self):
+    global logger
+    if not self.pyzipista_config:
+      logger.warning("Calling execute pyzipista without available config")
+      return
+      
+    self.zip_required = pyzipista_support.load_config_file_and_zip(self.pyzipista_config)
+
   def scan(self):
     
     global logger
@@ -402,6 +444,7 @@ class SyncTool(object):
     try:
 
       self.check_open_app()
+      self.check_pyzipista()
       if self.tool_sync_config.webdav.username:
         username = self.tool_sync_config.webdav.username
         password = self.tool_sync_config.webdav.password

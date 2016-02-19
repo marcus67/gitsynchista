@@ -1,3 +1,6 @@
+# coding: utf-8
+# This file is part of https://github.com/marcus67/gitsynchista
+
 import copy
 import string
 import ConfigParser
@@ -19,32 +22,31 @@ class BaseConfig(object):
         return list()
 
     def dump(self):
+      self._dump(conf=self, parent_prefix=type(self).__name__ + '.')
       
-      self._dump(self, type(self).__name__ + '.')
-      
-    def _dump(self, config, parent_prefix):
-      
+    def _dump(self, conf, parent_prefix):
       global logger
-            
-      for (key, value) in config.__dict__.items():
-        
-        attr_type = type(getattr(config, key)).__name__
+         
+      for (key, value) in conf.__dict__.items():       
+        attr_type = type(getattr(conf, key)).__name__
         name = parent_prefix + key
         #print attr_type
         if attr_type in ('int', 'bool', 'str'):
           logger.debug('%s=%s' % (name, str(value)))
+          
+        elif attr_type == 'NoneType':
+          logger.debug('%s=<NONE>' % name)
+          
         else:
           self._dump(value, name + '.')
 
 class ConfigHandler(object):
   
   def __init__(self, config_template):
-    
     self.config_template = config_template
     
     
   def scan_section(self, sectionName, model):
-
     for option in self.config_file.options(sectionName):
 
       if not option in model.__dict__:
@@ -102,7 +104,6 @@ class ConfigHandler(object):
     for section_name in self.config_file.sections():
 
       if section_name in self.config_template.__dict__:
-              
         sub_config = getattr(config, section_name)
         self.scan_section(section_name, sub_config)
         
@@ -112,7 +113,6 @@ class ConfigHandler(object):
     return config            
 
 def test():
-  
   pass
     
 if __name__ == '__main__':

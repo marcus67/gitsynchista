@@ -1,3 +1,6 @@
+# coding: utf-8
+# This file is part of https://github.com/marcus67/gitsynchista
+
 import logging
 import logging.handlers
 import logging.config
