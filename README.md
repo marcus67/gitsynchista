@@ -25,6 +25,20 @@ The GUI mode has special support for the iOS app [working copy](https://itunes.a
 
 Also, the user will be able to open a selected repository in working copy directly from the gisynchista GUI by pressing a dedicated button (see screenhot above).
 
+## Support for "pyzipista"
+
+The GUI mode also has a special support for the Pythonista tool [pyzipsta](https://github.com/marcus67/pyzipista/blob/master/README.md). When an installation of pyzipista is detected (this is basically done by checking if the script `../pyzipista/pyzipista.py` exists with respect to the location of the script `gitsynchista.py`) the GUI starts up with an additional icon and an additional button (see next screenshot).
+
+<center><img src="https://github.com/marcus67/gitsynchista/blob/master/doc/gitsynchista_gui_with_working_copy_and_pyzipista.PNG" width="400"></center>
+
+The border of the pyzipista button at the bottom of screen shows three different colors denoting the state of the respective self-extracting archive:
+
+  * black: The repository is not configured for pyzipista, which is to say there was no pyzipsita configuration file found in either the base directory of the repository or the `etc` subdirectory.
+  * green: The repository is configured for pyzipista and the self-extracting archive is up-to-date.
+  * red: The repository is configured for pyzipista and the self-extracting archive is not up-to-date.
+
+In the latter case the button is active and can be used to update the self-extracting archive.
+
 ## Prerequirements
 
 You need to have the Python WebDav client installed. See my clone at https://github.com/marcus67/easywebdav. Place the scripts into the `site-packages` directory. And, of course, you need to have a WebDav server. I'm using the iOS app [working copy](https://itunes.apple.com/it/app/working-copy/id896694807?l=en) but it should be possible to configure any other WebDAV server.
@@ -35,7 +49,7 @@ The source code is available as a self-extracting Python script. See file `build
 
 ## Configuration
 
-The tool gitsynchista does not require any configuration. However, the user will have to provide a small configuration file for each repository which needs to be synchronized. In its simplest form (which applies to a local synchronization with working copy) the configuration can be as simple as follows:
+The tool gitsynchista itself does not require any configuration. However, the user will have to provide a small configuration file for each repository which needs to be synchronized. In its simplest form (which applies to a local synchronization with working copy) the configuration can be as simple as follows:
 
 <pre>
 [webdav]
