@@ -12,11 +12,16 @@ the functionality of the command-line mode is rather limited.
   * You need to have the Python WebDav client installed. See my clone at https://github.com/marcus67/easywebdav. Place the script `easywebdav/client.py` into the `site-packages` directory. 
   * Install gitsynchista itself by downloading the [self-extracting archive](https://github.com/marcus67/gitsynchista/blob/master/build/gitsynchista_zip.py), placing it into the root directory of your Pythonista app and executing the script. Afterwards you will have a `gitsynchista` subdirectory. The downloaded can then be deleted.
 
-## Preparing the first repository
+## Preparing the First Repository on the WebDav Server
 
 The main task of gitsynchista is to synchronize the files of a repository located on your iDevice with the corresponding 
 repository on the WebDAV server (which may also be on the iDevice as mentioned above). If you already have such a repository 
 you are all set to start. Otherwise create such a repository on your WebDav server. Of course, how this is done is outside
 the scope of this tutorial.
 
-From now on we assume that the repository has the path `/myproject` on the WebDav server.
+From now on we assume that the repository has the path `/myproject` on the WebDav server. 
+
+## Preparing the Same Repository with gitsynchista
+
+The next step will be create a base directory in the Pythonista directory structure. Although it is not really required it is usually a good practive to use the same directory name in Pythonista. So from now on we assume that the base directory is called `myproject`.
+
