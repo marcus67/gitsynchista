@@ -63,7 +63,7 @@ Press the "Edit" button to add a new shortcut.
 
 Choose an empty slot by pressing the plus sign.
 
-![action shortcut step 3](https://raw.githubusercontent.com/marcus67/gitsynchista/master/docaction_shortcut_step3.png)
+![action shortcut step 3](https://raw.githubusercontent.com/marcus67/gitsynchista/master/doc/action_shortcut_step3.png)
 
 Choose the `gitsynchista` script and optionally add a logical name, an icon and the icon color. Save the settings.
 
