@@ -426,25 +426,25 @@ class SyncTool(object):
       return
       
     self.zip_required = pyzipista_support.load_config_file_and_check_zip_required(self.pyzipista_config)
-    print str(self.zip_required)
     
   def execute_pyzipista(self):
     global logger
+    
     if not self.pyzipista_config:
       logger.warning("Calling execute pyzipista without available config")
       return
       
     self.zip_required = pyzipista_support.load_config_file_and_zip(self.pyzipista_config)
 
-  def scan(self):
-    
+  def scan(self):    
     global logger
     
     self.error = None
+    
     try:
-
       self.check_open_app()
       self.check_pyzipista()
+      
       if self.tool_sync_config.webdav.username:
         username = self.tool_sync_config.webdav.username
         password = self.tool_sync_config.webdav.password
@@ -487,20 +487,17 @@ class SyncTool(object):
         logger.debug("    %s" % str(file))
 
     except Exception as e:
-      
       error_text = str(e)
       logger.error("Error during scan: %s" % error_text)
       self.interpret_error(error_text)
       self.error = error_text
 
   def auto_scan(self):
-    
     if (self.tool_sync_config.repository.auto_scan and 
         not (self.has_error() or self.is_scanned())):
       self.scan()
       
   def sync(self):
-    
     self.error = None
     
     if not self.compare_info:
@@ -523,7 +520,6 @@ class SyncTool(object):
       self.compare_info = None
     
     except Exception as e:
-      
       error_text = str(e)
       logger.error("Error during scan: %s" % error_text)
       self.interpret_error(error_text)
@@ -534,8 +530,10 @@ class SyncTool(object):
         self.short_error_text = "Authentication failed"
         logger.info("Authentication error: resetting password in keychain")
         keychain.delete_password(self.get_webdav_service_name(), self.tool_sync_config.webdav.username)
+        
       elif 'Connection refused' in error:
         self.short_error_text = "Server unreachable/down"
+        
       else:
         self.short_error_text = "Cause unknown"
       
@@ -561,17 +559,18 @@ class SyncTool(object):
     if self.has_error():
       sync_or_scan = "sync" if self.is_scanned() else "scan"
       return "Error during %s: %s" % (sync_or_scan, self.short_error_text)
+      
     else:
       return self.compare_info.get_sync_summary() if self.is_scanned() else "Requires scan"
   
   def get_sync_details(self):
     if self.has_error():
       return self.get_error_text()
+      
     else:
       return self.compare_info.get_sync_details()
       
   def open_working_copy_repository(self):
-    
     global logger
     
     if self.working_copy_active():
@@ -579,7 +578,6 @@ class SyncTool(object):
     
     
 def find_sync_configs(base_path='..'):
-  
   config_filenames = []
   configs = []
   
