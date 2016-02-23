@@ -10,12 +10,14 @@ import ui_util
 import popup
 import url_scheme_support
 import working_copy
+import pyzipista_support
 
 reload(log)
 reload(ui_util)
 reload(popup)
 reload(url_scheme_support)
 reload(working_copy)
+reload(pyzipista_support)
 
 global logger
 
@@ -52,13 +54,15 @@ class SyncSelector(ui_util.ViewController):
     image = ui.Image.named(IMAGE_URL_GITSYNCHISTA_ICON)
     self.find_subview_by_name('imageview_gitsynchista_icon').image = image
     
+    if pyzipista_support.pyzipista_found():
+      image = ui.Image.named(IMAGE_URL_PYZIPISTA_ICON).with_rendering_mode(ui.RENDERING_MODE_ORIGINAL)
+      self.view_pyzipista_icon.image = image
+      self.button_pyzipista.image = image    
+    
     image = ui.Image.named(IMAGE_URL_WORKING_COPY_ICON).with_rendering_mode(ui.RENDERING_MODE_ORIGINAL)
     self.view_working_copy_icon.image = image
     self.button_working_copy.image = image    
 
-    image = ui.Image.named(IMAGE_URL_PYZIPISTA_ICON).with_rendering_mode(ui.RENDERING_MODE_ORIGINAL)
-    self.view_pyzipista_icon.image = image
-    self.button_pyzipista.image = image    
     
     self.popup_vc = None
     
@@ -86,6 +90,8 @@ class SyncSelector(ui_util.ViewController):
     self.button_working_copy.hidden = not working_copy_active    
     self.view_working_copy_icon.hidden = not working_copy_active
     self.label_open_repository.hidden = not working_copy_active
+    self.button_pyzipista.hidden = not pyzipista_support.pyzipista_found()
+    self.label_pyzipista.hidden = not pyzipista_support.pyzipista_found()
     
     self.selected_index = None
     self.list_data_source = ui.ListDataSource([])
@@ -100,34 +106,33 @@ class SyncSelector(ui_util.ViewController):
     
     
   def update_tool_state(self, selected_index):
-    
     global logger
     
     logger.debug("update_tool_state: selected_index=%s" % str(selected_index))
     items = []
-
     tool = self.sync_tools[selected_index]
     tool.auto_scan()
-      
     logger.debug("build menu entry for sync config '%s' to list" % tool.get_name())
     line = "%s: %s" % (tool.get_name(), tool.get_sync_summary())
     entryMap = { 'title' : line }
-      
     add_accessory = False
+    
     if tool.has_error():
       entryMap['image'] = 'ionicons-ios7-bolt-outline-32'        
       add_accessory = True
+      
     elif tool.is_scanned():
       if tool.is_sync_required():
         entryMap['image'] = 'ionicons-ios7-refresh-outline-32'
         add_accessory = True
+        
       else:
         entryMap['image'] = 'ionicons-ios7-checkmark-outline-32'
+        
     else:
       entryMap['image'] = 'ionicons-ios7-search-32'
         
     if add_accessory: 
-        
       entryMap['accessory_type'] = 'detail_button'
       logger.debug("add accessory for sync config '%s'" % tool.get_name())
         
@@ -135,7 +140,6 @@ class SyncSelector(ui_util.ViewController):
     
     
   def retrieve_tool_states(self):
-    
     global logger
     
     logger.debug("retrieve_tool_states")
@@ -146,8 +150,8 @@ class SyncSelector(ui_util.ViewController):
 
     self.tableview_sync_selector.data_source.items = items
     i = 0
-    for tool in self.sync_tools:
     
+    for tool in self.sync_tools:
       self.update_tool_state(i) 
       i = i + 1
       
@@ -213,7 +217,6 @@ class SyncSelector(ui_util.ViewController):
       self.tableview_sync_selector.selected_row = self.selected_index
       
   def handle_action(self, sender):
-    
     global logger
     
     close = False
@@ -251,7 +254,6 @@ class SyncSelector(ui_util.ViewController):
         self.parent_view.handle_action(self)
         
   def handle_accessory(self, sender):
-    
     global logger
     
     logger.debug("handle_accessory row=%d" % sender.tapped_accessory_row)   
@@ -263,20 +265,17 @@ class SyncSelector(ui_util.ViewController):
     self.popup_vc.present(comment)
 
   def open_working_copy(self):
-    
     if self.selected_index != None:
       sync_tool = self.sync_tools[self.selected_index]
       sync_tool.open_working_copy_repository()
       
   def execute_scan(self):
-    
     if self.selected_index != None:
       sync_tool = self.sync_tools[self.selected_index]
       sync_tool.scan()
       self.pythonista_app_support.open_app()
       
   def execute_sync(self):
-    
     if self.selected_index != None:
       sync_tool = self.sync_tools[self.selected_index]
       sync_tool.sync()
