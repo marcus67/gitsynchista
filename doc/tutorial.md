@@ -55,15 +55,15 @@ If you intend to use working copy as your WebDav server you must also add a valu
 
 The easiest way to call gitsynchista is to create an Pythonista Action Shortcut. Press the wrench symbol in the Pythonista top bar (you have to be in a script to see the wrench).
 
-![action shortcut step 1](https://raw.githubusercontent.com/marcus67/gitsynchista/master/action_shortcut_step1.png)
+![action shortcut step 1](https://raw.githubusercontent.com/marcus67/gitsynchista/master/doc/action_shortcut_step1.png)
 
 Press the "Edit" button to add a new shortcut.
 
-![action shortcut step 2](https://raw.githubusercontent.com/marcus67/gitsynchista/master/action_shortcut_step2.png)
+![action shortcut step 2](https://raw.githubusercontent.com/marcus67/gitsynchista/master/doc/action_shortcut_step2.png)
 
 Choose an empty slot by pressing the plus sign.
 
-![action shortcut step 3](https://raw.githubusercontent.com/marcus67/gitsynchista/master/action_shortcut_step3.png)
+![action shortcut step 3](https://raw.githubusercontent.com/marcus67/gitsynchista/master/docaction_shortcut_step3.png)
 
 Choose the `gitsynchista` script and optionally add a logical name, an icon and the icon color. Save the settings.
 
