@@ -144,9 +144,12 @@ class FileAccess(object):
   
 class WebDavFileAccess(FileAccess):
   
-  def __init__(self, webdav_client, root_path=None):
+  def __init__(self, webdav_client, root_path=None, conf=None):
+    ''' :type conf: sync_config.WebDavConfig
+    '''
     super(WebDavFileAccess, self).__init__(root_path)
     self.webdav_client = webdav_client
+    self.conf = conf
     
   def file_exists(self, path):
     base_name = os.path.basename(path)
@@ -177,7 +180,7 @@ class WebDavFileAccess(FileAccess):
       else:
         sub_files = None
         struct_time = time.strptime(f.mtime, '%a, %d %b %Y %H:%M:%S %Z')
-        mtime = time.mktime(struct_time) + 3600
+        mtime = time.mktime(struct_time) + self.conf.epoch_delta
       file = File(name=f.name.replace(self.root_path, '.', 1), physical_name=f.name, base_name=base_name, mtime=mtime, sub_files=sub_files, is_ignored=is_ignored)
       files.append(file)
     
@@ -377,6 +380,9 @@ class SyncTool(object):
   
   def __init__(self, tool_sync_config):
     
+    '''
+    :type tool_sync_config: sync_config.SyncConfig
+    '''
     self.tool_sync_config = tool_sync_config
     self.compare_info = None
     self.error = None
@@ -465,7 +471,7 @@ class SyncTool(object):
                              protocol='http', verify_ssl=False, cert=None)
                            
       local_file_access = FileAccess(self.tool_sync_config.repository.local_path)
-      remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path)      
+      remote_file_access = WebDavFileAccess(webdav_client, self.tool_sync_config.repository.remote_path, self.tool_sync_config.webdav)      
       self.compare_info = CompareInfo(local_file_access, remote_file_access)
   
       logger.debug("Local files:")
