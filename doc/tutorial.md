@@ -35,12 +35,11 @@ Now, create a configuration file named `gitsynchista_config.txt` in the base dir
 
 This is the minimal configuration. Note that the path for `remote_path` is absolute on the WebDav server whereas the path for `local_path` is relative to the location of the script `gitsynchista.py`. You may need to add credentials to log into the WebDav server by using the para meters `username` and `password`:
 
-
     [repository]
     name = My Dummy Project
     local_path = ../dummyproject
     remote_path = /dummyproject
-    username = myloginin
+    username = mylogin
     password = mypassword
 
 
@@ -107,7 +106,10 @@ Pressing the "i" icon on the right side of the entry will open a popup window wi
 
 ### Automatic Scan
 
-TODO
+For frequently used repositories it makes sense to make gisynchista automatically scan the repository when the GUI is started. Use the parameter `auto_scan` to use this feature:
+
+  [repository]
+  auto_scan = True
 
 ### Correcting a Time Shift
 
@@ -118,9 +120,21 @@ The up-to-date-check of the files is based upon their timestamps on both the loc
 
 can be used to automatically *add* the configured number of seconds to the timestamps of the WebDav server. For working copy the value has to be set to `3600`.
 
+### Supressing the Synchronization of Certain Files/Patterns
+
+The app will scan directories for files named `gitsynchista_ignore.txt` or `.gitignore`. If found it will suppress the files and patterns contained in the file from being synchronized. Note that currently the use of `.gitignore` is not really possible with Pythonista since dot files are not visible in the built-in file browser!
+
+A typical use case would be to suppress the synchronization of the `gitsynchista_config.txt` file since it contains site-specific and/or user-specific settings which should not be under version-control.
+
 ### Login with Credentials
 
-The default authentication mode with the WebDav server is anonymous. This may not be desired when accessing a remote server which is publically available. In this case the credentials can be set using the `username` and `password` parameters. If only the username is set the password will prompted upon first access to the WebDav server and saved to the iOS key chain. The "service" for which the password is saved in the key chain will be composed of the prefix "Webdav Server" and the name of the repository as can be seen in the following screenshot:
+The default authentication mode with the WebDav server is anonymous. This may not be desired when accessing a remote server which is publically available. In this case the credentials can be set using the `username` and `password` parameters. 
+
+    [repository]
+    username = mylogin
+    password = mypassword
+    
+If only the username is set the password will prompted upon first access to the WebDav server and saved to the iOS key chain. The "service" for which the password is saved in the key chain will be composed of the prefix "Webdav Server" and the name of the repository as can be seen in the following screenshot:
 
 <CENTER><IMG SRC="https://raw.githubusercontent.com/marcus67/gitsynchista/master/doc/gitsynchista_gui_sync_password.png" WIDTH="400px"></CENTER>
 
@@ -137,5 +151,9 @@ The default authentication method with the WebDav server is "Digest HTTP" which 
 
 ### Automatic Wake Up
 
-Although this has been mentioned above we repeat the special setting for working copy for reasons of completeness. Due to Apple regulations most iOS apps are usually not allowed to stay active in the background. In case of a server application this is disadvantageous since usually the app (gitsynchista in this case) accessing the server will be running in the foreground. However, Apple allows apps a certain "grace period" between the point of time when they are pushed into the background and the point of time when they have to stop all background activity. Working Copy takes advantage of this and provides the WebDav service until the grace period is over. gitsynchista uses published URL schemes to activate the WebDav server of Working Copy and then uses the grace period to scan and sync files.
+Although this has been mentioned above we repeat the special setting for Working Copy for reasons of completeness. Due to Apple regulations most iOS apps are usually not allowed to stay active in the background. In case of a server application this is disadvantageous since usually the app accessing the server (gitsynchista in this case) will be running in the foreground. However, Apple allows apps a certain "grace period" between the point of time when they are pushed into the background and the point of time when they have to stop all background activity. Working Copy takes advantage of this and provides the WebDav service until the grace period is over. gitsynchista uses published URL schemes to activate the WebDav server of Working Copy and then uses the grace period to scan and sync files if the following parameter is set:
 
+	[repository]
+	working_copy_wakeup = True
+	
+Note that - although this is a per-repository setting - the wake up is done only once before opening the GUI. This means that as soon as the grace period is over gitsynchista will generate runt-time errors when tring to scan or sync files with the Working Copy WebDav server. See this [ticket](https://github.com/marcus67/gitsynchista/issues/18).
