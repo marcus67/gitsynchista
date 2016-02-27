@@ -1,13 +1,22 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
+import platform
 import copy
 import string
-import ConfigParser
+
+py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
 
 import log
 
-reload(log)
+if py_majversion == '2':
+	from ConfigParser import ConfigParser
+
+else:
+	from configparser import ConfigParser
+	from importlib import reload	
+
+reload(log)	
 
 global logger
 
@@ -77,12 +86,11 @@ class ConfigHandler(object):
 
 
   def read_config_file(self, filename):
-    
     global logger
     
     fmt = "reading configuration file '%s' for config '%s'"
     logger.info(fmt % (filename, type(self.config_template).__name__))
-    self.config_file = ConfigParser.ConfigParser()
+    self.config_file = ConfigParser()
     self.config_file.optionxform = str # make options case sensitive
     config = copy.deepcopy(self.config_template)
 

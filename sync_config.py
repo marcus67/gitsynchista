@@ -1,9 +1,15 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
+import platform
 import config
 import client
 
+py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
+
+if py_majversion == '3':
+	from importlib import reload
+	
 reload(config)
 reload(client)
 
@@ -12,7 +18,6 @@ PASSWORD_USE_KEY_CHAIN = 'USE_KEY_CHAIN'
 class WebDavConfig(config.BaseConfig):
   
   def __init__(self):
-    
     self.server = 'localhost'
     self.port = 8080
     self.auth_mode = client.AUTH_MODE_DIGEST
@@ -27,7 +32,6 @@ class WebDavConfig(config.BaseConfig):
 class RepositoryConfig(config.BaseConfig):
 
   def __init__(self):
-    
     self.name = None
     self.local_path = None
     self.remote_path = None

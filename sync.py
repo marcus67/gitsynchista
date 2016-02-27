@@ -1,6 +1,7 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
+import platform
 import sys
 import client
 import os
@@ -9,10 +10,16 @@ import datetime
 import logging
 import re
 import tempfile
-import StringIO
 import requests
 import keychain
 
+py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
+
+from six import BytesIO
+
+if py_majversion == '3':
+	from importlib import reload
+	
 import log
 import config
 import sync_config
@@ -46,7 +53,7 @@ logger = log.open_logging(__name__)
 class File(object):
   
   def __init__(self, name, physical_name, base_name, mtime, sub_files = None, is_ignored=False):
-    
+
     self.name = name
     self.physical_name = physical_name
     self.base_name = base_name
@@ -84,7 +91,7 @@ global_ignore_info = IgnoreInfo(ADDITIONAL_IGNORE_PATTERNS)
 global_suppress_info = IgnoreInfo(SUPPRESS_PATTERNS)
 
 class FileAccess(object):
-  
+	
   def __init__(self, root_path):
     self.root_path = root_path
   
@@ -96,11 +103,13 @@ class FileAccess(object):
     github_ignore_info = self.load_ignore_info(os.path.join(base_path, GIT_IGNORE_FILE))
     gitsynchista_ignore_info = self.load_ignore_info(os.path.join(base_path, GITSYNCHISTA_IGNORE_FILE))
     gitsynchista_ignore_info_2 = self.load_ignore_info(os.path.join(base_path, GITSYNCHISTA_IGNORE_FILE_2))
+    
     for f in os.listdir(base_path):
       is_ignored = parent_is_ignored or github_ignore_info.is_ignored(f) or   gitsynchista_ignore_info.is_ignored(f) or gitsynchista_ignore_info_2.is_ignored(f) or global_ignore_info.is_ignored(f) or global_suppress_info.is_ignored(f)
       path = os.path.join(base_path, f)
       attr = os.stat(path)
       isDirectory = os.path.isdir(path)
+      
       if isDirectory:
         if global_suppress_info.is_ignored(f):
           sub_files = None
@@ -118,7 +127,6 @@ class FileAccess(object):
     return os.path.exists(path)
     
   def load_ignore_info(self, ignore_file):
-
     global logger
   
     if self.file_exists(ignore_file):
@@ -128,12 +136,12 @@ class FileAccess(object):
     else:
       return IgnoreInfo('')
    
-  def save_from_string(self, path, string):
-    with open(path, "wb") as file:
+  def save_from_string(self, path, string, mode="w"):
+    with open(path, mode) as file:
       file.write(string)
   
-  def load_into_string(self, path):
-    return open(path, "rb").read()
+  def load_into_string(self, path, mode="r"):
+    return open(path, mode).read()
     
   def set_mtime(self, path, mtime):
     os.utime(path, (mtime, mtime))          
@@ -156,7 +164,6 @@ class WebDavFileAccess(FileAccess):
     return False if base_name[0] == '.' else self.webdav_client.exists(path)
     
   def load_directory(self, base_path=None, parent_is_ignored=False):
-  
     global logger
     
     if not base_path:
@@ -186,22 +193,22 @@ class WebDavFileAccess(FileAccess):
     
     return files
     
-  def save_from_string(self, path, string):
+  def save_from_string(self, path, string, mode="w"):
     
     global logger
     
     logger.debug("Saving string to WebDav:%s" % path)
-    string_file = StringIO.StringIO(string)
+    string_file = BytesIO(string)
     self.webdav_client.upload(string_file, path)
   
-  def load_into_string(self, path):
+  def load_into_string(self, path, mode="r"):
   
     global logger
     
-    string_file = StringIO.StringIO()
+    string_file = BytesIO()
     self.webdav_client.download(path, string_file)
     logger.debug("Loading 'WebDav:%s' into string" % path)
-    return str(string_file.getvalue())
+    return string_file.getvalue()
 
   def set_mtime(self, path, mtime):
     
@@ -224,21 +231,20 @@ def compare_file_sets(file_dict1, file_dict2, change_info):
   change_info.dest_file_dict = file_dict2
 
 def transfer_modified_files(change_info, source_file_access, dest_file_access):
-  
   global logger
   
+  print("E")
   for file in change_info.modified_files:
     if not(file.is_directory()):
       dest_file = change_info.dest_file_dict[file.name]
       logger.info("Transferring '%s' to '%s'" % (file.physical_name, dest_file.physical_name))
-      dest_file_access.save_from_string(dest_file.physical_name, source_file_access.load_into_string(file.physical_name))
+      dest_file_access.save_from_string(dest_file.physical_name, source_file_access.load_into_string(file.physical_name, mode="rb"), mode="wb")
       dest_file_access.set_mtime(dest_file.physical_name, file.mtime)
   
 def transfer_new_files(change_info, source_file_access, dest_file_access):
-  
   global logger
   
-  for file in sorted(change_info.new_files, cmp=compare_files_by_name):
+  for file in sorted(change_info.new_files, key=lambda x:x.name):
     
     if file.is_ignored:
       continue
@@ -248,9 +254,10 @@ def transfer_new_files(change_info, source_file_access, dest_file_access):
     if file.is_directory():
       logger.info("Creating directory '%s'" % dest_physical_name)
       dest_file_access.mkdir(dest_physical_name)
+      
     else:
       logger.info("Transferring '%s' to '%s'" % (file.physical_name, dest_physical_name))
-      dest_file_access.save_from_string(dest_physical_name, source_file_access.load_into_string(file.physical_name))
+      dest_file_access.save_from_string(dest_physical_name, source_file_access.load_into_string(file.physical_name, mode="rb"), mode="wb")
       dest_file_access.set_mtime(dest_physical_name, file.mtime)
 
 def update_source_timestamps(change_info, source_file_access, dest_file_access):
@@ -349,7 +356,7 @@ class CompareInfo(object):
       "Local modified files": self.local_change_info.modified_files,
       "Remote new files": self.remote_change_info.new_files,
       "Remote modified files": self.remote_change_info.modified_files }
-    for label, files in label_files_dict.iteritems():
+    for label, files in iter(label_files_dict.items()):
       if files:
         details += "\n\n{}:\n{}".format(label, "\n".join(
           "    " + file.physical_name for file in files))
@@ -494,7 +501,7 @@ class SyncTool(object):
 
     except Exception as e:
       error_text = str(e)
-      logger.error("Error during scan: %s" % error_text)
+      logger.exception("Error during scan: %s" % error_text)
       self.interpret_error(error_text)
       self.error = error_text
 
@@ -505,16 +512,20 @@ class SyncTool(object):
       
   def sync(self):
     self.error = None
+    print ("A")
     
     if not self.compare_info:
       self.scan()
     
+    print ("B")
     if self.has_error():
       return
     
+    print ("C")
     try:
       self.check_open_app()
       if self.tool_sync_config.repository.transfer_to_remote:
+        print ("D")
         self.compare_info.transfer_new_files_to_remote()
         self.compare_info.transfer_modified_files_to_remote()
         self.compare_info.update_local_timestamps()
@@ -527,7 +538,7 @@ class SyncTool(object):
     
     except Exception as e:
       error_text = str(e)
-      logger.error("Error during scan: %s" % error_text)
+      logger.exception("Error during scan: %s" % error_text)
       self.interpret_error(error_text)
       self.error = error_text
     

@@ -1,11 +1,23 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
+import platform
 import ui
 
+py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
+
+import log
 import ui_util
 
+if py_majversion == '3':
+	from importlib import reload
+	
+reload(log)
 reload(ui_util)
+	
+global logger
+
+logger = log.open_logging(__name__)
 
 DEFAULT_TITLE = 'Additional Information'
 
@@ -22,12 +34,13 @@ class PopupViewController ( ui_util.ViewController ) :
     self.view.height = min(ui.get_screen_size())
     
   def handle_action(self, sender):
+    global logger
     
     if sender.name == 'button_close':
       self.view.close()
       
     else:
-      print "WARNING: action '%s' not handled!" % sender.name
+      logger.warning("Action '%s' not handled!" % sender.name)
       
     return 0
     
@@ -38,7 +51,6 @@ class PopupViewController ( ui_util.ViewController ) :
     super(PopupViewController, self).present(style)
     
 def test():
-  
   popup_vc = PopupViewController()
   popup_vc.present("Hallo!", close_label="Close")    
     

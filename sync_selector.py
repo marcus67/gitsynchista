@@ -1,9 +1,12 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
+import platform
 import ui
 import os
 import Image
+
+py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
 
 import log
 import ui_util
@@ -12,6 +15,9 @@ import url_scheme_support
 import working_copy
 import pyzipista_support
 
+if py_majversion == '3':
+	from importlib import reload
+	
 reload(log)
 reload(ui_util)
 reload(popup)
@@ -31,7 +37,6 @@ IMAGE_URL_PYZIPISTA_ICON_32 = '../pyzipista/lib/pyzipista_32x32.png'
 class SyncSelector(ui_util.ViewController):
   
   def __init__(self, parent_vc=None):
-    
     global logger
     
     super(SyncSelector, self).__init__(parent_vc)
@@ -62,14 +67,10 @@ class SyncSelector(ui_util.ViewController):
     image = ui.Image.named(IMAGE_URL_WORKING_COPY_ICON).with_rendering_mode(ui.RENDERING_MODE_ORIGINAL)
     self.view_working_copy_icon.image = image
     self.button_working_copy.image = image    
-
-    
     self.popup_vc = None
-    
     self.pythonista_app_support = url_scheme_support.UrlSchemeSupport('pythonista')
          
   def get_selected_mode(self):
-    
     if self.selected_index == None:
       return None
       
@@ -77,22 +78,18 @@ class SyncSelector(ui_util.ViewController):
       return self.modes[self.selected_index]
 
   def is_my_action(self, sender):
-    
     return sender == self
     
   def select(self, sync_tools, style = 'sheet', working_copy_active = False):
-
     global logger
 
     self.sync_tools = sync_tools        
-
     self.working_copy_active = working_copy_active
     self.button_working_copy.hidden = not working_copy_active    
     self.view_working_copy_icon.hidden = not working_copy_active
     self.label_open_repository.hidden = not working_copy_active
     self.button_pyzipista.hidden = not pyzipista_support.pyzipista_found()
     self.label_pyzipista.hidden = not pyzipista_support.pyzipista_found()
-    
     self.selected_index = None
     self.list_data_source = ui.ListDataSource([])
 
@@ -103,7 +100,6 @@ class SyncSelector(ui_util.ViewController):
     
     if not self.parent_view:
       self.view.wait_modal()
-    
     
   def update_tool_state(self, selected_index):
     global logger
@@ -138,7 +134,6 @@ class SyncSelector(ui_util.ViewController):
         
     self.tableview_sync_selector.data_source.items[selected_index] = entryMap
     
-    
   def retrieve_tool_states(self):
     global logger
     
@@ -155,13 +150,11 @@ class SyncSelector(ui_util.ViewController):
       self.update_tool_state(i) 
       i = i + 1
       
-    self.pythonista_app_support.open_app()
+    #self.pythonista_app_support.open_app()
  
     
   def update_view_states(self):
-    
     global logger
-    
     logger.debug("update_view_states: selected_index=%s" % str(self.selected_index))
     
     if self.selected_index != None:
@@ -172,9 +165,11 @@ class SyncSelector(ui_util.ViewController):
         if sync_tool.zip_required:
           zip_button_active = True
           zip_button_color = 'red'
+          
         else:
           zip_button_active = False
           zip_button_color = 'green'
+          
       else:
         zip_button_active = False
         zip_button_color = 'black'
@@ -201,15 +196,19 @@ class SyncSelector(ui_util.ViewController):
     self.button_scan.enabled = scan_active
     self.button_sync.enabled = sync_active
     self.button_working_copy.enabled = working_copy_active
+    
     if working_copy_active:
       self.label_open_repository.text_color = 'black'
+      
     else:
       self.label_open_repository.text_color = 'lightgrey'
       
     self.button_pyzipista.enabled = zip_button_active
     self.button_pyzipista.border_color = zip_button_color
+    
     if zip_button_active:
       self.label_pyzipista.text_color = 'black'
+      
     else:
       self.label_pyzipista.text_color = 'lightgrey'
     
@@ -218,8 +217,8 @@ class SyncSelector(ui_util.ViewController):
       
   def handle_action(self, sender):
     global logger
-    
     close = False
+    
     if type(sender).__name__ == 'ListDataSource':
       self.selected_index = sender.selected_row
       logger.debug("handle_action from ListDataSource: selected_index=%d" % self.selected_index)
@@ -255,7 +254,6 @@ class SyncSelector(ui_util.ViewController):
         
   def handle_accessory(self, sender):
     global logger
-    
     logger.debug("handle_accessory row=%d" % sender.tapped_accessory_row)   
              
     if not self.popup_vc:
@@ -273,14 +271,14 @@ class SyncSelector(ui_util.ViewController):
     if self.selected_index != None:
       sync_tool = self.sync_tools[self.selected_index]
       sync_tool.scan()
-      self.pythonista_app_support.open_app()
+      #self.pythonista_app_support.open_app()
       
   def execute_sync(self):
     if self.selected_index != None:
       sync_tool = self.sync_tools[self.selected_index]
       sync_tool.sync()
       sync_tool.scan()
-      self.pythonista_app_support.open_app()
+      #self.pythonista_app_support.open_app()
   
   def execute_pyzipista(self):
     if self.selected_index != None:
