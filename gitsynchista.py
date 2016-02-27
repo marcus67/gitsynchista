@@ -1,9 +1,10 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
-import platform
 import sys
 import os
+import console
+import six
 
 import log
 import config
@@ -12,9 +13,7 @@ import sync
 import sync_selector
 import working_copy
 
-py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
-
-if py_majversion == '3':
+if six.PY3:
 	from importlib import reload	
 	
 reload(log)
@@ -25,14 +24,13 @@ reload(sync_selector)
 reload(working_copy)
 
 #Use this switch to temporarily disable support for app "working copy"
-ENABLE_WORKING_COPY_SUPPORT = False
+ENABLE_WORKING_COPY_SUPPORT = True
 
 def load_config_file_and_sync(config_filename):
   global logger
   
   config_handler = config.ConfigHandler(sync_config.SyncConfig())
   tool_sync_config = config_handler.read_config_file(config_filename)
-  
   sync_tool = sync.SyncTool(tool_sync_config)
   
   try:
@@ -54,11 +52,11 @@ def wakeup_webdav_server(config):
     working_copy_support.wakeup_webdav_server()
 
 def start_gui(check_wakeup):
-  
   global logger
   
   if check_wakeup:
   	logger.info("Checking if wakeup is required...")
+  	
   sync_tools = []
   configs = sync.find_sync_configs()
   working_copy_configs = []
@@ -80,7 +78,7 @@ def start_gui(check_wakeup):
       sync_tools.append(sync_tool)
       
     except Exception as e:
-      logger.error("Error '%s' while processing configuration '%s'" % ( str(e), config.repository.name) )
+      logger.exception("Error '%s' while processing configuration '%s'" % ( str(e), config.repository.name) )
     
   selector = sync_selector.SyncSelector()
   selector.select(sync_tools, working_copy_active=working_copy_active)

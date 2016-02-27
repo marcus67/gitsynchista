@@ -1,21 +1,19 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
-import platform
 import webbrowser as wb
 import urllib
 import time
 import keychain
 import console
-
-py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
+import six
 
 import log
 import util
 import sync_config
 import url_scheme_support
 
-if py_majversion == '3':
+if six.PY3:
 	from importlib import reload
 	
 reload(log)
@@ -39,8 +37,8 @@ class WorkingCopySupport (url_scheme_support.UrlSchemeSupport):
     self.key = util.get_password_from_keychain(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
     
   def wakeup_webdav_server(self):
-    payload = { 'cmd' : 'start',
-                'x-success' : 'pythonista://gitsynchista/gitsynchista?action=run&argv=%s' % PARAM_IGNORE_WAKEUP}
+    pythonista_url = 'pythonista' if six.PY2 else 'pythonista3'
+    payload = { 'cmd' : 'start', 'x-success' : '%s://gitsynchista/gitsynchista?action=run&argv=%s' % (pythonista_url, PARAM_IGNORE_WAKEUP)}
     self._send_to_app(action='webdav', payload=payload, x_callback_enabled=True)
     #time.sleep(1)
     
@@ -56,3 +54,4 @@ def remove_key_from_chain():
 	
 if __name__ == '__main__':
 	remove_key_from_chain()
+	

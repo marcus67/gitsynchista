@@ -1,13 +1,11 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
-import platform
 import os
 import sys
+import six
 
-py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
-
-if py_majversion == '3':    
+if six.PY3:    
 	from importlib import reload
 			
 global pyzipista_found
@@ -45,8 +43,7 @@ def find_config(base_path):
 
 def load_config_file_and_check_zip_required(config_filename):
   return pyzipista.load_config_file_and_check_zip_required(config_filename)
-  
-
+ 
 def load_config_file_and_zip(config_filename):
   pyzipista.load_config_file_and_zip(config_filename)
   
@@ -55,4 +52,4 @@ def test():
   
 if __name__ == '__main__':
   test()
-  
+

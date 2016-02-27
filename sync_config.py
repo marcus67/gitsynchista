@@ -1,13 +1,11 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
-import platform
 import config
 import client
+import six
 
-py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
-
-if py_majversion == '3':
+if six.PY3:
 	from importlib import reload
 	
 reload(config)
@@ -49,3 +47,4 @@ class SyncConfig(config.BaseConfig):
   def __init__(self):
     self.webdav = WebDavConfig()
     self.repository = RepositoryConfig()  
+    

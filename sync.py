@@ -1,7 +1,6 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
-import platform
 import sys
 import client
 import os
@@ -12,12 +11,9 @@ import re
 import tempfile
 import requests
 import keychain
+import six
 
-py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
-
-from six import BytesIO
-
-if py_majversion == '3':
+if six.PY3:
 	from importlib import reload
 	
 import log
@@ -198,14 +194,14 @@ class WebDavFileAccess(FileAccess):
     global logger
     
     logger.debug("Saving string to WebDav:%s" % path)
-    string_file = BytesIO(string)
+    string_file = six.BytesIO(string)
     self.webdav_client.upload(string_file, path)
   
   def load_into_string(self, path, mode="r"):
   
     global logger
     
-    string_file = BytesIO()
+    string_file = six.BytesIO()
     self.webdav_client.download(path, string_file)
     logger.debug("Loading 'WebDav:%s' into string" % path)
     return string_file.getvalue()
@@ -233,7 +229,6 @@ def compare_file_sets(file_dict1, file_dict2, change_info):
 def transfer_modified_files(change_info, source_file_access, dest_file_access):
   global logger
   
-  print("E")
   for file in change_info.modified_files:
     if not(file.is_directory()):
       dest_file = change_info.dest_file_dict[file.name]
@@ -512,20 +507,16 @@ class SyncTool(object):
       
   def sync(self):
     self.error = None
-    print ("A")
     
     if not self.compare_info:
       self.scan()
     
-    print ("B")
     if self.has_error():
       return
     
-    print ("C")
     try:
       self.check_open_app()
       if self.tool_sync_config.repository.transfer_to_remote:
-        print ("D")
         self.compare_info.transfer_new_files_to_remote()
         self.compare_info.transfer_modified_files_to_remote()
         self.compare_info.update_local_timestamps()

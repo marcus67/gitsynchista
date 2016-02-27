@@ -1,20 +1,18 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
-import platform
 import webbrowser as wb
 import urllib
 import time
 import keychain
 import console
+import six
 
 import log
 import util
 import sync_config
 
-py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
-
-if py_majversion == '3':
+if six.PY3:
 	from urllib.parse import urlencode
 	from importlib import reload
 	

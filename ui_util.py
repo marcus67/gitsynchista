@@ -1,15 +1,13 @@
 # coding: utf-8
 # This file is part of https://github.com/marcus67/gitsynchista
 
-import platform
 import ui
 import logging
-
-py_majversion, py_minversion, py_revversion = platform.python_version_tuple()
+import six
 
 import log
 
-if py_majversion == '3':
+if six.PY3:
 	from importlib import reload
 	
 reload(log)
