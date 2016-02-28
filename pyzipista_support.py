@@ -13,10 +13,11 @@ global pyzipista_found
 _pyzipista_found = False
 
 PYZIPISTA_PATH = '../pyzipista'
+PYZIPISTA_SCRIPT = os.path.join(PYZIPISTA_PATH, 'pyzipista.py')
 
 path = os.path.abspath(PYZIPISTA_PATH)
 
-if os.path.exists(path):
+if os.path.exists(path) and os.path.exists(PYZIPISTA_SCRIPT):
 	if not PYZIPISTA_PATH in sys.path:
 		# see http://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
 		sys.path.append(PYZIPISTA_PATH)
