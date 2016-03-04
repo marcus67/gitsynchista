@@ -54,6 +54,7 @@ def wakeup_webdav_server(config):
 def start_gui(check_wakeup):
   global logger
   
+  console.show_activity("Scanning repositories...")
   if check_wakeup:
   	logger.info("Checking if wakeup is required...")
   	
@@ -66,6 +67,7 @@ def start_gui(check_wakeup):
   if working_copy_active and check_wakeup:
     wakeup_webdav_server(working_copy_configs[0])
     logger.info("Exiting to await callback from Working Copy...")
+    console.hide_activity()
     return 
     
   logger.info("Starting GUI...")
@@ -81,6 +83,7 @@ def start_gui(check_wakeup):
       logger.exception("Error '%s' while processing configuration '%s'" % ( str(e), config.repository.name) )
     
   selector = sync_selector.SyncSelector()
+  console.hide_activity()
   selector.select(sync_tools, working_copy_active=working_copy_active)
   
 def main():

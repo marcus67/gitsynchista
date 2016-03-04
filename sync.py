@@ -207,10 +207,9 @@ class WebDavFileAccess(FileAccess):
     return string_file.getvalue()
 
   def set_mtime(self, path, mtime):
-    
     global logger
     
-    logger.warning("Cannot set mtime for WebDav files")        
+    logger.info("Cannot set mtime for WebDav files")        
     
   def mkdir(self, path):
     self.webdav_client.mkdir(path)
